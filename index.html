@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palestra Solve</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: a field-station logbook. One working column, a sticky instrument bar with a large mono clock, each game owns one colour. */
+  --bg:#e9eeec; --surface:#f8faf9; --sunk:#dfe6e3; --ink:#12211f; --muted:#566864; --line:#c7d2ce;
+  --accent:#0d5f6e; --on-accent:#ffffff;
+  --rust:#a4472a; --sea:#0d5f6e; --moss:#4c7428; --slate:#4a4f6a;
+  --good:#23764a; --warn:#a86a10; --bad:#b0352d;
+  --display:"Bricolage Grotesque","Arial Narrow",system-ui,sans-serif;
+  --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0e1615; --surface:#162120; --sunk:#0a1110; --ink:#e4ebe8; --muted:#91a39e; --line:#2a3a37;
+    --accent:#5fc0cf; --on-accent:#06201f;
+    --rust:#e08a6c; --sea:#5fc0cf; --moss:#9cc86e; --slate:#a3a9d6;
+    --good:#5fc48d; --warn:#e0aa4a; --bad:#ee7d74;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0e1615; --surface:#162120; --sunk:#0a1110; --ink:#e4ebe8; --muted:#91a39e; --line:#2a3a37;
+  --accent:#5fc0cf; --on-accent:#06201f;
+  --rust:#e08a6c; --sea:#5fc0cf; --moss:#9cc86e; --slate:#a3a9d6;
+  --good:#5fc48d; --warn:#e0aa4a; --bad:#ee7d74;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--display);line-height:1.08;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:clamp(2rem,5.2vw,3.5rem);font-weight:800}
+h2{font-size:1.5rem;font-weight:700}
+h3{font-size:1.1rem;font-weight:700}
+p{margin:0}
+.wrap{max-width:1080px;margin:0 auto;padding:24px 20px 72px;display:flex;flex-direction:column;gap:24px}
+.muted{color:var(--muted)} .small{font-size:.875rem} .n,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.m-rr{--m:var(--rust)} .m-sw{--m:var(--sea)} .m-sf{--m:var(--moss)} .m-dr{--m:var(--slate)}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{border:1px solid var(--line);background:var(--surface);padding:9px 16px;border-radius:6px;font-weight:600}
+.btn:hover{border-color:var(--ink)}
+.btn.pri{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.btn.pri:hover{filter:brightness(1.1)}
+.btn.big{padding:14px 22px;font-size:1.05rem}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.card.m{border-top:4px solid var(--m)}
+.tag{font:600 .72rem/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--m,var(--muted))}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.grow{flex:1 1 auto}
+/* home */
+.masthead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px}
+.brand{font:800 1.15rem var(--display)}
+.hero{display:flex;flex-direction:column;gap:20px}
+.hero p.lead{max-width:62ch;font-size:1.1rem;color:var(--muted)}
+.track{display:flex;gap:3px;border-radius:8px;overflow:hidden}
+.seg{background:var(--m);color:var(--on-accent);padding:14px 14px 12px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.seg b{font:800 1.9rem/1 var(--display)} .seg span{font-size:.85rem;font-weight:600}
+.seg small{font:400 .72rem var(--mono);opacity:.85}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.segctl{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface)}
+.segctl button{border:0;background:transparent;padding:8px 14px;font-weight:600;font-size:.9rem;border-right:1px solid var(--line)}
+.segctl button:last-child{border-right:0}
+.segctl button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.hist{display:flex;flex-direction:column;gap:6px}
+.hrow{display:grid;grid-template-columns:120px 1fr 52px;gap:12px;align-items:center;font-size:.9rem}
+.bar{height:10px;background:var(--sunk);border-radius:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--m,var(--accent));border-radius:5px}
+/* play */
+.top{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:2px solid var(--m);padding:10px 0;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.clock{font:600 2rem/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+.clock.warn{color:var(--warn)} .clock.crit{color:var(--bad)}
+.steps{display:flex;gap:6px;flex-wrap:wrap}
+.steps span{font:600 .72rem var(--mono);padding:4px 8px;border-radius:4px;border:1px solid var(--line);color:var(--muted)}
+.steps span.on{background:var(--m);border-color:var(--m);color:var(--on-accent)}
+.steps span.done{color:var(--ink)}
+.two{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+.m-sw .two{grid-template-columns:minmax(0,.62fr) minmax(0,1.38fr)}
+.m-sw th,.m-sw td{padding-left:7px;padding-right:7px}
+@media (max-width:800px){.two{grid-template-columns:1fr}}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+td.n,th.n{text-align:right}
+thead th{font:600 .72rem var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+tbody th{font-weight:600}
+.dp{font:600 .92rem var(--mono);border:1px dashed var(--line);background:transparent;border-radius:4px;padding:1px 6px}
+.dp:hover{border-color:var(--m)} .dp.on{background:var(--m);color:var(--on-accent);border:1px solid var(--m)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.8rem;border:1px solid var(--line);border-radius:4px;padding:3px 8px;background:var(--sunk)}
+.chip b{font-family:var(--mono)}
+.q{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--line)}
+.q:first-of-type{border-top:0;padding-top:0}
+.q label,.q .ql{font-weight:500;max-width:65ch}
+input[type=text],select{font:600 1rem var(--mono);padding:9px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);width:160px;max-width:100%}
+select{font-family:var(--body);width:auto}
+.opt{display:flex;flex-direction:column;gap:8px}
+.opt button{text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:10px 12px}
+.opt button[aria-pressed="true"]{border-color:var(--m);box-shadow:inset 4px 0 0 var(--m);font-weight:600}
+.note{border-left:4px solid var(--m,var(--accent));background:var(--sunk);padding:10px 12px;font-size:.9rem;border-radius:0 6px 6px 0}
+.pill{display:inline-block;font:600 .72rem var(--mono);padding:3px 8px;border-radius:99px;border:1px solid currentColor}
+.pill.ok{color:var(--good)} .pill.no{color:var(--bad)} .pill.mid{color:var(--warn)}
+tr.sel{background:var(--sunk);box-shadow:inset 4px 0 0 var(--m)}
+tr.clk{cursor:pointer}
+.mic{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.mic button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:6px}
+.mic button:hover{border-color:var(--m)}
+.mic .v{display:flex;justify-content:space-between;font-size:.85rem}
+.tok{font:600 1rem var(--mono)}
+.scale{display:flex;gap:6px;flex-wrap:wrap}
+.scale button{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:10px 12px;min-width:92px}
+.scale button[aria-pressed="true"]{background:var(--m);color:var(--on-accent);border-color:var(--m)}
+svg text{fill:var(--muted);font:11px var(--mono)} svg .g{stroke:var(--line)} svg .b{fill:var(--m,var(--accent))}
+/* results */
+.score{font:800 clamp(3.5rem,11vw,6.5rem)/.9 var(--display);font-variant-numeric:tabular-nums}
+.score small{font-size:.3em;color:var(--muted);font-weight:500}
+.brk{display:grid;grid-template-columns:minmax(120px,220px) 1fr 70px;gap:10px;align-items:center;font-size:.9rem}
+details{border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font-weight:600}
+ul.tips{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;max-width:70ch}
+td.wrapc{white-space:normal;min-width:220px}
+/* calculator */
+#calc{position:fixed;right:16px;bottom:16px;width:250px;background:var(--surface);border:1px solid var(--ink);border-radius:8px;padding:12px;display:none;flex-direction:column;gap:8px;z-index:10;box-shadow:0 8px 28px rgba(0,0,0,.25)}
+#calc.open{display:flex}
+#calc input{width:100%}
+#calc .out{font:600 1.2rem var(--mono);text-align:right;min-height:1.6em;overflow-wrap:anywhere}
+#calc .keys{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+#calc .keys button{border:1px solid var(--line);background:var(--bg);border-radius:5px;padding:8px 0;font:600 .95rem var(--mono)}
+footer{font-size:.8rem;color:var(--muted);max-width:75ch}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .5s ease}}
+
+th.c,td.c{text-align:center;padding-left:6px;padding-right:6px}
+input.sm{width:96px;padding:5px 8px}
+p.rep{line-height:2.3;max-width:70ch}
+.segctl.sm button{padding:4px 9px;font-size:.8rem}
+svg .l1{stroke:var(--m,var(--accent))} svg .c1{fill:var(--m,var(--accent))}
+svg .l2{stroke:var(--ink);stroke-dasharray:6 4} svg .c2{fill:var(--ink)}
+ol.rank{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;counter-reset:r}
+ol.rank li{counter-increment:r;display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--bg)}
+ol.rank li::before{content:counter(r);font:600 .9rem var(--mono);color:var(--muted);width:1.2em}
+ul.notes{margin:0;padding-left:18px;font-size:.85rem;display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow:auto}
+.ask{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.arow{display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:start}
+.aq{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.aq .btn{text-align:left;font-weight:500}
+.ans{font-size:.88rem;border-left:3px solid var(--m);padding:2px 0 2px 8px}
+@media (max-width:560px){.arow{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div id="calc" aria-label="Calcolatrice">
+  <div class="row"><b class="grow">Calcolatrice</b><button class="btn ghost small" data-a="calc-toggle" id="calc-close">Chiudi</button></div>
+  <input type="text" id="calc-in" inputmode="decimal" autocomplete="off" placeholder="es. (840-720)/720" aria-label="Espressione">
+  <div class="out" id="calc-out">&nbsp;</div>
+  <div class="keys" id="calc-keys"></div>
+</div>
+<script>
+'use strict';
+/* ---------- utilities ---------- */
+const R=Math.random, ri=(a,b)=>a+Math.floor(R()*(b-a+1)), pick=a=>a[Math.floor(R()*a.length)];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const sample=(a,n)=>shuffle(a).slice(0,n);
+const f=(n,d=0)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const cap=s=>s[0].toUpperCase()+s.slice(1);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const mmss=s=>{s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+const empty=v=>v==null||v==='';
+function parseNum(s){
+  if(s==null) return NaN; s=String(s).trim().replace(/[\s%€]/g,''); if(!s) return NaN;
+  if(/^-?[1-9]\d{0,2}(,\d{3})+(\.\d+)?$/.test(s)) s=s.replace(/,/g,''); else s=s.replace(',','.');
+  return /^-?(\d+\.?\d*|\.\d+)$/.test(s)?parseFloat(s):NaN;
+}
+const tbl=(h,rows)=>`<div class="tw"><table><thead><tr>${h.map((x,i)=>`<th${i?' class="n"':''}>${x}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>i?`<td class="n">${c}</td>`:`<th scope="row">${c}</th>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+function niceStep(max){const raw=max/4||1,p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p;return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p}
+function barSvg(labels,vals,step){
+  step=step||niceStep(Math.max(...vals));const n=Math.max(1,Math.ceil(Math.max(...vals)/step-1e-9)),max=n*step,dec=step<1?(step<.1?2:1):0,W=380,H=200,L=48,B=24,T=10,pw=W-L-8,ph=H-B-T,bw=pw/vals.length;
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:420px" role="img" aria-label="Bar chart">`;
+  for(let i=0;i<=n;i++){const v=i*step,y=T+ph-ph*v/max;s+=`<line class="g" x1="${L}" x2="${W-8}" y1="${y}" y2="${y}"/><text x="${L-6}" y="${y+4}" text-anchor="end">${f(v,dec)}</text>`}
+  vals.forEach((v,i)=>{const h=ph*v/max;s+=`<rect class="b" x="${L+i*bw+bw*.2}" y="${T+ph-h}" width="${bw*.6}" height="${h}"/><text x="${L+i*bw+bw/2}" y="${H-7}" text-anchor="middle">${String(labels[i]).split(' ')[0]}</text>`});
+  return s+'</svg>';
+}
+function lineSvg(labels,series){
+  const all=series.flatMap(x=>x.v),step=niceStep(Math.max(...all)),n=Math.ceil(Math.max(...all)/step-1e-9),max=n*step,W=380,H=210,L=48,B=40,T=10,pw=W-L-36,ph=H-B-T,x=i=>L+8+pw*i/(labels.length-1),y=v=>T+ph-ph*v/max;
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:420px" role="img" aria-label="Line chart">`;
+  for(let i=0;i<=n;i++)s+=`<line class="g" x1="${L}" x2="${W-8}" y1="${y(i*step)}" y2="${y(i*step)}"/><text x="${L-6}" y="${y(i*step)+4}" text-anchor="end">${f(i*step)}</text>`;
+  labels.forEach((l,i)=>s+=`<text x="${x(i)}" y="${H-24}" text-anchor="middle">${String(l).split(' ')[0]}</text>`);
+  series.forEach((se,k)=>{s+=`<polyline fill="none" class="${k?'l2':'l1'}" stroke-width="2.5" points="${se.v.map((v,i)=>x(i)+','+y(v)).join(' ')}"/>`+se.v.map((v,i)=>`<circle class="${k?'c2':'c1'}" cx="${x(i)}" cy="${y(v)}" r="3.5"/>`).join('')+`<text x="${L+8+k*150}" y="${H-6}">${k?'– –':'——'} ${se.n}</text>`});
+  return s+'</svg>';
+}
+function pieSvg(labels,vals){
+  const tot=vals.reduce((a,b)=>a+b,0),cx=90,cy=95,r=80;let a0=-Math.PI/2,s='<svg viewBox="0 0 380 200" width="100%" style="max-width:420px" role="img" aria-label="Pie chart">';
+  vals.forEach((v,i)=>{const a1=a0+2*Math.PI*v/tot,big=a1-a0>Math.PI?1:0;
+    s+=`<path class="b" style="opacity:${[1,.62,.34,.18][i%4]}" d="M${cx},${cy} L${cx+r*Math.cos(a0)},${cy+r*Math.sin(a0)} A${r},${r} 0 ${big} 1 ${cx+r*Math.cos(a1)},${cy+r*Math.sin(a1)} Z"/><rect class="b" style="opacity:${[1,.62,.34,.18][i%4]}" x="195" y="${40+i*26}" width="12" height="12"/><text x="214" y="${51+i*26}">${labels[i]} ${f(v/tot*100,1)}%</text>`;a0=a1});
+  return s+'</svg>';
+}
+function chk(q,raw){
+  if(empty(raw)) return {ok:false,your:'—'};
+  if(q.type==='mc') return {ok:+raw===q.ans,your:q.opts[+raw]};
+  const u=parseNum(raw); return {ok:isFinite(u)&&Math.abs(u-q.ans)<=q.tol+1e-9,your:String(raw)};
+}
+const corr=q=>q.type==='mc'?q.opts[q.ans]:q.show;
+
+/* ---------- mini-case generators (English, like the real test) ---------- */
+const SP=['wolves','elk','deer','bison','foxes','hares','lynx'], RG=['North Ridge','East Basin','South Flats','West Canyon','Central Plateau'];
+const mcShuffle=(opts,right)=>{const o=shuffle(opts);return{opts:o,ans:o.indexOf(right)}};
+const C={
+ pct(){const [s,s2,s3]=sample(SP,3),y1=ri(2018,2021),y2=y1+ri(2,4),a=ri(12,95)*10;let k;do{k=ri(60,160)/100}while(Math.abs(k-1)<.06);
+  const b=Math.round(a*k/5)*5,ans=(b-a)/a*100,o=()=>[f(ri(10,90)*10),f(ri(10,90)*10)];
+  return{tag:'Percentage change',ex:tbl(['Species',y1,y2],shuffle([[cap(s),f(a),f(b)],[cap(s2),...o()],[cap(s3),...o()]])),
+   q:`By what percentage did the ${s} population change between ${y1} and ${y2}? Use a minus sign for a decline. Round to one decimal.`,type:'num',unit:'%',ans,tol:.1,show:f(ans,1)+'%',
+   why:`(${f(b)} − ${f(a)}) ÷ ${f(a)} = ${f(ans,1)}%. Si divide sempre per il valore iniziale.`}},
+ wavg(){const rg=sample(RG,3),n=rg.map(()=>ri(4,30)*10),w=rg.map(()=>ri(180,320)),tot=n.reduce((a,b)=>a+b),ans=n.reduce((a,x,i)=>a+x*w[i],0)/tot;
+  return{tag:'Weighted average',ex:tbl(['Region','Elk counted','Avg weight (kg)'],rg.map((r,i)=>[r,f(n[i]),f(w[i])])),
+   q:'What is the average weight of an elk across all three regions, in kg? Round to one decimal.',type:'num',unit:'kg',ans,tol:.1,show:f(ans,1)+' kg',
+   why:`Media ponderata: (${n.map((x,i)=>`${x}×${w[i]}`).join(' + ')}) ÷ ${f(tot)} = ${f(ans,1)}. La media semplice dei tre pesi sarebbe sbagliata.`}},
+ comp(){const P=ri(20,90)*100,r=pick([5,8,10,12,15,20,25]),up=R()<.5,y=pick([2,3]),s=pick(SP),ans=P*Math.pow(1+(up?r:-r)/100,y);
+  return{tag:'Compound growth',ex:`<p>A park holds <b>${f(P)}</b> ${s}. The population ${up?'grows':'shrinks'} by <b>${r}%</b> each year.</p>`,
+   q:`How many ${s} will there be after ${y} years? Round to the nearest whole number.`,type:'num',ans,tol:Math.max(1,ans*.002),show:f(ans),
+   why:`${f(P)} × ${(1+(up?r:-r)/100).toFixed(2)}^${y} = ${f(ans)}. La variazione si compone anno su anno, non si somma.`}},
+ share(){const rg=sample(RG,4),n=rg.map(()=>ri(8,60)*10),s=pick(SP),i=ri(0,3),tot=n.reduce((a,b)=>a+b),ans=n[i]/tot*100;
+  return{tag:'Share of total',ex:tbl(['Region',cap(s)],rg.map((r,j)=>[r,f(n[j])])),
+   q:`What share of the park's ${s} live in ${rg[i]}? Round to one decimal.`,type:'num',unit:'%',ans,tol:.1,show:f(ans,1)+'%',
+   why:`${f(n[i])} ÷ ${f(tot)} (totale delle quattro regioni) = ${f(ans,1)}%.`}},
+ rev(){const d=pick([10,15,20,25,30,40]),before=ri(20,90)*20,now=before*(1-d/100),s=pick(SP);
+  return{tag:'Reverse percentage',ex:`<p>After a harsh winter the ${s} population fell by <b>${d}%</b> and now stands at <b>${f(now)}</b>.</p>`,
+   q:`How many ${s} were there before the winter?`,type:'num',ans:before,tol:1,show:f(before),
+   why:`${f(now)} ÷ ${(1-d/100).toFixed(2)} = ${f(before)}. Errore tipico: aggiungere il ${d}% al valore attuale.`}},
+ brk(){const p=ri(8,20)*10,v=ri(2,6)*10,F=ri(20,90)*500,ans=Math.ceil(F/(p-v));
+  return{tag:'Break-even',ex:`<p>A research station has fixed costs of <b>€${f(F)}</b> per year. Each guided tour earns <b>€${p}</b> and costs <b>€${v}</b> to run.</p>`,
+   q:'What is the minimum whole number of tours per year needed to break even?',type:'num',ans,tol:0,show:f(ans),
+   why:`${f(F)} ÷ (${p} − ${v}) = ${f(F/(p-v),2)}, arrotondato per eccesso a ${f(ans)}.`}},
+ food(){const w=ri(6,14),k=pick([4,5,6]),m=pick([120,150,160,180,200]),ans=Math.ceil(w*k*30/m);
+  return{tag:'Rates',ex:`<p>A pack of <b>${w}</b> wolves needs <b>${k} kg</b> of meat per wolf per day. One elk provides <b>${m} kg</b> of edible meat.</p>`,
+   q:'What is the minimum whole number of elk the pack needs over 30 days?',type:'num',ans,tol:0,show:f(ans),
+   why:`${w} × ${k} × 30 = ${f(w*k*30)} kg; ÷ ${m} = ${f(w*k*30/m,2)}, arrotondato per eccesso a ${ans}.`}},
+ pp(){const s=sample(SP,3),y1=ri(2019,2022),y2=y1+ri(1,3),a=s.map(()=>ri(10,80)*10),b=a.map(x=>Math.round(x*ri(70,150)/1000)*10),i=ri(0,2),
+  s1=a[i]/a.reduce((x,y)=>x+y)*100,s2=b[i]/b.reduce((x,y)=>x+y)*100,ans=s2-s1;
+  return{tag:'Percentage points',ex:tbl(['Species',y1,y2],s.map((n,j)=>[cap(n),f(a[j]),f(b[j])])),
+   q:`By how many percentage points did the share of ${s[i]} in the total population change from ${y1} to ${y2}? Use a minus sign for a fall. Round to one decimal.`,type:'num',unit:'p.p.',ans,tol:.1,show:f(ans,1)+' p.p.',
+   why:`Quota ${y1}: ${f(s1,1)}%; quota ${y2}: ${f(s2,1)}%; differenza ${f(ans,1)} punti. Punti percentuali, non variazione percentuale.`}},
+ topg(){for(;;){const rg=sample(RG,4),a=rg.map(()=>ri(10,60)*10),g0=sample([6,9,12,15,18,22,25,30,35,40],4),b=a.map((x,i)=>Math.round(x*(1+g0[i]/100))),g=a.map((x,i)=>(b[i]-x)/x*100),
+  srt=[...g].sort((x,y)=>y-x);if(srt[0]-srt[1]<1.5)continue;const ans=g.indexOf(srt[0]),y=ri(2020,2023);
+  return{tag:'Compare growth',ex:tbl(['Region',y,y+2],rg.map((r,i)=>[r,f(a[i]),f(b[i])])),q:'Which region had the highest percentage growth?',type:'mc',opts:rg,ans,
+   why:`Crescite: ${rg.map((r,i)=>`${r} ${f(g[i],1)}%`).join(', ')}. Attenzione: la crescita assoluta più alta non è per forza quella percentuale.`}}},
+ surv(){const N=ri(20,80)*10,[s1,s2]=[pick([60,70,75,80,90]),pick([60,70,75,80,90])],ans=N*s1*s2/1e4;
+  return{tag:'Chained rates',ex:`<p><b>${f(N)}</b> calves are born this spring. <b>${s1}%</b> survive their first year, and <b>${s2}%</b> of those survive their second year.</p>`,
+   q:'How many calves are expected to be alive after two years? Round to the nearest whole number.',type:'num',ans,tol:1,show:f(ans),
+   why:`${f(N)} × ${s1/100} × ${s2/100} = ${f(ans)}.`}},
+ dens(){for(;;){const rg=sample(RG,3),n=rg.map(()=>ri(10,90)*10),ar=rg.map(()=>ri(8,40)*10),d=n.map((x,i)=>x/ar[i]),ans=Math.max(...d)-Math.min(...d);if(ans<.3)continue;
+  return{tag:'Density',ex:tbl(['Region','Deer','Area (km²)'],rg.map((r,i)=>[r,f(n[i]),f(ar[i])])),
+   q:'What is the difference in deer density (deer per km²) between the densest and the least dense region? Round to one decimal.',type:'num',ans,tol:.1,show:f(ans,1),
+   why:`Densità: ${rg.map((r,i)=>`${r} ${f(d[i],2)}`).join(', ')}. Massima − minima = ${f(ans,1)}.`}}},
+ chart(){const it=pick([['how the wolf population changed every year from 2015 to 2025',0],['this year\'s elk count compared across six regions',1],['each species\' share of the park\'s total animal population this year',2]]);
+  return{tag:'Chart choice',ex:'<p>You are preparing one slide for the park director.</p>',q:`Which chart best shows ${it[0]}?`,type:'mc',opts:['Line chart','Bar chart','Pie chart'],ans:it[1],
+   why:'Linea per un andamento nel tempo, barre per confrontare categorie, torta per le quote di un totale.'}},
+ margin(){for(;;){const nm=['Guided tours','Field courses','Photo permits'],rev=nm.map(()=>ri(20,90)*10),m0=sample([12,15,18,20,24,28,30,35,40],3),cost=rev.map((r,i)=>Math.round(r*(1-m0[i]/100))),m=rev.map((r,i)=>(r-cost[i])/r*100),
+  srt=[...m].sort((a,b)=>b-a);if(srt[0]-srt[1]<1.5)continue;
+  return{tag:'Margin',ex:tbl(['Activity','Revenue (€k)','Cost (€k)'],nm.map((x,i)=>[x,f(rev[i]),f(cost[i])])),q:'Which activity has the highest profit margin?',type:'mc',opts:nm,ans:m.indexOf(srt[0]),
+   why:`Margini: ${nm.map((x,i)=>`${x} ${f(m[i],1)}%`).join(', ')}. Margine = (ricavi − costi) ÷ ricavi.`}}},
+ work(){const a=ri(3,6),c=ri(4,10),b=a*c*ri(3,8),d=ri(2,9),e=ri(10,60)*10,rate=b/(a*c),ans=e/rate/d;
+  return{tag:'Work rate',ex:`<p>A team of <b>${a}</b> rangers tags <b>${f(b)}</b> animals in <b>${c}</b> days.</p>`,
+   q:`At the same rate per ranger, how many days would ${d} rangers need to tag ${f(e)} animals? Round to one decimal.`,type:'num',unit:'days',ans,tol:.1,show:f(ans,1),
+   why:`Ritmo: ${f(b)} ÷ (${a}×${c}) = ${f(rate)} animali per ranger al giorno. ${f(e)} ÷ ${f(rate)} ÷ ${d} = ${f(ans,1)} giorni.`}},
+ bars(){const y0=ri(2017,2020),lab=[0,1,2,3,4].map(i=>y0+i),vals=lab.map(()=>ri(4,18)*50);let i=ri(0,3),j=ri(i+1,4);if(vals[i]===vals[j])vals[j]+=100;const ans=(vals[j]-vals[i])/vals[i]*100;
+  return{tag:'Chart reading',ex:`<p class="small muted">Elk counted per year. Gridlines every 100.</p>${barSvg(lab,vals,100)}`,
+   q:`Reading the chart, by what percentage did the elk count change from ${lab[i]} to ${lab[j]}? Use a minus sign for a decline. Round to one decimal.`,type:'num',unit:'%',ans,tol:.15,show:f(ans,1)+'%',
+   why:`Valori letti: ${f(vals[i])} e ${f(vals[j])}. (${f(vals[j])} − ${f(vals[i])}) ÷ ${f(vals[i])} = ${f(ans,1)}%.`}},
+ median(){const n=pick([5,6,7,8]),v=Array.from({length:n},()=>ri(3,40)),s=[...v].sort((a,b)=>a-b),ans=n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2,rg=Array.from({length:n},(_,i)=>'Transect '+(i+1));
+  return{tag:'Median',ex:tbl(['Transect','Wolves sighted'],rg.map((r,i)=>[r,v[i]])),q:'What is the median number of wolves sighted per transect? One decimal if needed.',type:'num',ans,tol:.05,show:f(ans,n%2?0:1),
+   why:`Ordinati: ${s.join(', ')}. ${n%2?'Valore centrale':'Media dei due valori centrali'} = ${ans}. La mediana non è la media.`}},
+ prob(){const p=pick([30,40,50,60,70,80]),q=pick([30,40,50,60,70,80]),both=R()<.5,ans=both?p*q/100:100-(100-p)*(100-q)/100;
+  return{tag:'Probability',ex:`<p>Camera A detects a passing wolf with probability <b>${p}%</b>. Camera B, working independently, detects it with probability <b>${q}%</b>.</p>`,
+   q:`What is the probability that ${both?'both cameras detect':'at least one camera detects'} the wolf? Answer in percent, one decimal.`,type:'num',unit:'%',ans,tol:.1,show:f(ans,1)+'%',
+   why:both?`${p/100} × ${q/100} = ${f(ans,1)}%.`:`1 − (1 − ${p/100}) × (1 − ${q/100}) = ${f(ans,1)}%. "Almeno uno" si calcola come 1 meno la probabilità che nessuno rilevi.`}},
+ formula(){const it=pick([
+   ['the percentage change from an old value to a new value','(new − old) ÷ old',['(new − old) ÷ new','new ÷ old','(old − new) ÷ old']],
+   ['the average weight of animals across two regions with n₁ and n₂ animals and average weights w₁ and w₂','(n₁×w₁ + n₂×w₂) ÷ (n₁ + n₂)',['(w₁ + w₂) ÷ 2','(n₁ + n₂) ÷ (w₁ + w₂)','(n₁×w₁ + n₂×w₂) ÷ 2']],
+   ['the number of units needed to break even','fixed costs ÷ (price − variable cost per unit)',['fixed costs ÷ price','(fixed costs + variable cost per unit) ÷ price','price ÷ (fixed costs − variable cost per unit)']],
+   ['the original value before a decline of x (as a decimal) that left the value at V','V ÷ (1 − x)',['V × (1 + x)','V × (1 − x)','V ÷ (1 + x)']],
+   ['the value after n years of growth at rate g (as a decimal) from a starting value P','P × (1 + g)ⁿ',['P × (1 + n × g)','P × n × g','P ÷ (1 − g)ⁿ']]]),m=mcShuffle([it[1],...it[2]],it[1]);
+  return{tag:'Formula',ex:'<p>A colleague asks you to check a spreadsheet formula.</p>',q:`Which formula gives ${it[0]}?`,type:'mc',...m,why:`Formula corretta: ${it[1]}.`}},
+ verbal(){const a=ri(52,68),b=ri(8,18),it=pick([
+   [`Rangers counted wolves in two valleys. In the northern valley <b>${a}%</b> of sightings happened at dusk. In the southern valley sightings were spread evenly across the day. The northern valley has more forest cover than the southern one.`,
+    [['Most wolf sightings in the northern valley happened at dusk.',0],['Forest cover causes wolves to be active at dusk.',2],['More wolves live in the northern valley than in the southern valley.',2],['In the southern valley most sightings happened at dusk.',1]]],
+   [`A reserve raised its entry fee by <b>${b}%</b> this year. Visitor numbers fell, but total fee revenue rose. The reserve also opened a new visitor centre in the same year.`,
+    [['Visitor numbers fell by less than the fee rose, in percentage terms.',0],['The fee increase was the reason visitor numbers fell.',2],['Total fee revenue was lower this year than last year.',1],['The visitor centre attracted visitors who would not otherwise have come.',2]]]]),st=pick(it[1]);
+  return{tag:'Verbal reasoning',ex:`<p>${it[0]}</p>`,q:`Based only on the passage, the statement "${st[0]}" is:`,type:'mc',opts:['True','False','Cannot be determined'],ans:st[1],
+   why:st[1]===2?'Il testo non dà abbastanza elementi: una correlazione o una coincidenza non dimostra una causa né un totale.':st[1]===0?'Segue direttamente dai dati del testo.':'Contraddice quanto scritto nel testo.'}},
+ ppmc(){const a=ri(20,60),d=ri(4,15),b=a+d,right=`It rose by ${d} percentage points.`,m=mcShuffle([right,`It rose by ${d}%.`,`It rose by ${f(d/b*100,1)}%.`,`It rose by ${f(d/a*100,1)} percentage points.`],right);
+  return{tag:'Percent vs points',ex:`<p>The calf survival rate rose from <b>${a}%</b> to <b>${b}%</b>.</p>`,q:'Which statement is correct?',type:'mc',...m,
+   why:`${b}% − ${a}% = ${d} punti percentuali. In termini relativi l'aumento è ${f(d/a*100,1)}%.`}}
+};
+const genCases=(n,keys)=>{const ks=keys&&keys.length?shuffle(Array.from({length:n},(_,i)=>keys[i%keys.length])):sample(Object.keys(C),n);return ks.map(k=>({...C[k](),k}))};
+
+/* ---------- Redrock-style study ---------- */
+function genStudy(){for(;;){
+  const y=ri(2019,2022),Y=[y,y+1,y+2,y+3],dps=[],dp=(label,val,rel,show)=>{dps.push({label,val,rel,show:show||f(val)});return{id:dps.length-1}};
+  const e1=ri(60,140)*10,e4=Math.round(e1*pick([.7,.75,.8,.85,1.15,1.2,1.3])/10)*10,lerp=(a,b,t)=>Math.round((a+(b-a)*t)*(1+(R()-.5)*.08)/10)*10;
+  const elk=[e1,lerp(e1,e4,.33),lerp(e1,e4,.66),e4],w1=ri(20,60),w4=Math.round(w1*pick([.8,1.25,1.4,1.6])),wol=[w1,Math.round(w1+(w4-w1)*.3),Math.round(w1+(w4-w1)*.7),w4];
+  const walk=(s,k)=>{const a=[s];for(let i=1;i<4;i++)a.push(Math.max(k,a[i-1]+ri(-8,8)*k));return a};
+  const rg=sample(RG,3);let a=Math.round(e4*ri(25,45)/1000)*10,b=Math.round(e4*ri(25,40)/1000)*10,c=e4-a-b;const re=[a,b,c],ar=rg.map(()=>ri(8,40)*10),den=re.map((x,i)=>x/ar[i]),srt=[...den].sort((p,q)=>q-p);
+  if(c<=0||srt[0]-srt[1]<.15) continue;
+  const br=pick([12,15,18,20,25]),k=pick([8,10,12,14,16]),proj=e4*(1+br/100)-w4*k,pcE=(e4-e1)/e1*100,pcW=(w4-w1)/w1*100,r1=e1/w1,r4=e4/w4;
+  if(proj<=0||Math.abs(proj-e4)<10||Math.abs(r1-r4)<.5) continue;
+  const row=(name,arr,rel)=>[name,...arr.map((v,i)=>dp(`${name} ${Y[i]}`,v,rel(i)))],no=()=>false,ends=i=>i===0||i===3;
+  const ex=[
+   {t:'Exhibit 1 · Animal counts',h:['Species',...Y],rows:[row('Elk',elk,ends),row('Wolves',wol,ends),row('Deer',walk(ri(40,90)*10,10),no),row('Bison',walk(ri(10,40)*10,10),no),row('Foxes',walk(ri(8,30)*5,5),no)]},
+   {t:`Exhibit 2 · Regions, ${Y[3]}`,h:['Region','Elk','Area (km²)','Wolf packs','Ranger patrols / week'],rows:rg.map((r,i)=>[r,dp(`Elk in ${r} ${Y[3]}`,re[i],true),dp(`Area of ${r} (km²)`,ar[i],true),dp(`Wolf packs in ${r}`,ri(1,4),false),dp(`Patrols in ${r}`,ri(3,14),false)])},
+   {t:'Exhibit 3 · Climate and visitors',h:['Measure',...Y],rows:[row('Rainfall (mm)',walk(ri(50,110)*10,10),no),row('Avg winter temp (°C)',[0,0,0,0].map(()=>ri(-12,-2)),no),row('Visitors (thousands)',walk(ri(20,90),1),no)]}];
+  const facts=shuffle([
+    ['Each year, new elk calves add about',dp('Elk birth rate',br,true,br+'%'),'to the herd counted at the start of the year.'],
+    ['On average one wolf kills',dp('Elk killed per wolf per year',k,true),'elk per year.'],
+    ['The typical wolf pack has',dp('Wolves per pack',ri(5,9),false),'members.'],
+    ['The reserve employs',dp('Rangers',ri(12,40),false),'rangers.'],
+    ['An adult elk weighs about',dp('Elk weight (kg)',ri(26,34)*10,false),'kg.'],
+    ['Deer make up about',(v=>dp('Deer share of wolf diet',v,false,v+'%'))(ri(10,30)),'of the wolves\' diet.']]);
+  const P=(q,ans,tol,show,why)=>({q,type:'num',ans,tol,show,why});
+  const parts=[
+    P(`Percentage change in the elk population from ${Y[0]} to ${Y[3]} (minus sign for a decline, one decimal)`,pcE,.1,f(pcE,1)+'%',`(${f(e4)} − ${f(e1)}) ÷ ${f(e1)} = ${f(pcE,1)}%.`),
+    P(`Percentage change in the wolf population over the same period (one decimal)`,pcW,.1,f(pcW,1)+'%',`(${w4} − ${w1}) ÷ ${w1} = ${f(pcW,1)}%.`),
+    P(`Elk per wolf in ${Y[3]} (one decimal)`,r4,.1,f(r4,1),`${f(e4)} ÷ ${w4} = ${f(r4,1)}.`),
+    P(`Change in elk per wolf from ${Y[0]} to ${Y[3]} (minus sign for a fall, one decimal)`,r4-r1,.15,f(r4-r1,1),`${Y[3]}: ${f(r4,1)}; ${Y[0]}: ${f(e1)} ÷ ${w1} = ${f(r1,1)}; differenza ${f(r4-r1,1)}.`),
+    P(`Elk density (elk per km²) of the densest region in ${Y[3]} (two decimals)`,srt[0],.01,f(srt[0],2),`Densità: ${rg.map((r,i)=>`${r} ${f(den[i],2)}`).join(', ')}. Va calcolata per tutte e tre prima di scegliere.`),
+    P(`Projected elk for ${Y[3]+1}: apply the birth rate to the ${Y[3]} herd, then subtract the elk killed by the ${Y[3]} wolves (ignore other deaths, whole number)`,proj,1,f(proj),`${f(e4)} × ${(1+br/100).toFixed(2)} − ${w4} × ${k} = ${f(proj)}.`)];
+  const qs=[{stem:'Question 1 · Population change',p:[0,1]},{stem:'Question 2 · Predator–prey balance',p:[2,3]},{stem:'Question 3 · Concentration and outlook',p:[4,5]}];
+  const task=pick([{msg:`the trend of the elk and wolf populations from ${Y[0]} to ${Y[3]}`,type:'line',data:'trend'},{msg:`how the ${Y[3]} elk herd is split between the three regions, as shares of the total`,type:'pie',data:'region'},{msg:'a comparison of elk density across the three regions',type:'bar',data:'density'}]);
+  const cmp=(x,y)=>x>y?'higher than':x<y?'lower than':'equal to',CMP=['higher than','lower than','equal to'];
+  const rep={r0:{t:'num',ans:pcE,tol:.1,show:f(pcE,1)},r1:{t:'num',ans:pcW,tol:.1,show:f(pcW,1)},r2:{t:'sel',opts:CMP,ans:cmp(r4,r1),why:`${Y[0]}: ${f(r1,1)}; ${Y[3]}: ${f(r4,1)} elk per wolf.`},
+    r3:{t:'sel',opts:rg,ans:rg[den.indexOf(srt[0])]},r4:{t:'num',ans:srt[0],tol:.01,show:f(srt[0],2)},r5:{t:'sel',opts:CMP,ans:cmp(proj,e4),why:`Proiezione ${f(proj)} contro ${f(e4)} attuali.`},
+    ct:{t:'sel',opts:['bar','line','pie'],ans:task.type,why:'Linea per un andamento nel tempo, barre per confrontare categorie, torta per le quote di un totale.'},cd:{t:'sel',opts:['trend','region','density'],ans:task.data,why:'Il grafico deve usare i dati di cui parla la frase.'}};
+  const ds={trend:{n:`Elk and wolves by year (index, ${Y[0]} = 100)`,labels:Y,series:[{n:'Elk',v:elk.map(x=>x/e1*100)},{n:'Wolves',v:wol.map(x=>x/w1*100)}]},
+    region:{n:`Elk by region, ${Y[3]}`,labels:rg,series:[{n:'Elk',v:re}]},density:{n:`Elk per km² by region, ${Y[3]}`,labels:rg,series:[{n:'Elk per km²',v:den}]}};
+  return{Y,dps,ex,facts,parts,qs,rep,task,ds,rg};
+}}
+const chartPrev=(type,d)=>type==='line'?lineSvg(d.labels,d.series):type==='pie'?pieSvg(d.labels,d.series[0].v):barSvg(d.labels,d.series[0].v);
+
+/* ---------- Sea Wolf-style ---------- */
+const ATT=['Permeability','Mobility','Energy'],TR=['Aerobic','Heat-resistant','Light-sensitive','Salt-tolerant'],TRA=['Aer','Heat','Light','Salt'];
+const inR=(site,i,v)=>v>=site.rng[i][0]-1e-9&&v<=site.rng[i][1]+1e-9;
+function swEval(site,tri){
+  const avg=[0,1,2].map(i=>(tri[0].a[i]+tri[1].a[i]+tri[2].a[i])/3),inr=avg.map((v,i)=>inR(site,i,v)),d=tri.some(m=>m.t[site.D]),u=tri.every(m=>!m.t[site.U]);
+  return{avg,inr,d,u,score:(inr.filter(Boolean).length+ +d+ +u)*20};
+}
+function swBest(site,pool){let best=null;for(let i=0;i<pool.length;i++)for(let j=i+1;j<pool.length;j++)for(let k=j+1;k<pool.length;k++){const t=[pool[i],pool[j],pool[k]],e=swEval(site,t);if(!best||e.score>best.e.score)best={t,e}}return best}
+function swBestAll(site){let b=0;for(let a=0;a<81;a++){const pool=site.pool.slice();let x=a;for(let r=0;r<4;r++){pool.push(site.rounds[r][x%3]);x=Math.floor(x/3)}b=Math.max(b,swBest(site,pool).e.score)}return b}
+const fitsThis=(s,m)=>[0,1,2].filter(i=>inR(s,i,m.a[i])).length>=2&&!m.t[s.U];
+const fitsOther=(o,known,m)=>known.every(i=>inR(o,i,m.a[i]))&&!m.t[o.U];
+function genSW(){
+  const used=new Set,name=()=>{for(;;){const s=pick(['Va','Te','Ro','Li','Mu','Sa','Ne','Ko','Di','Pa','Zu','Fe','Ha','Bo'])+pick(['ri','lo','ma','ten','vex','sil','dor','nu','bra','qui','ca','mo'])+pick(['x','a','um','is','on','e','ar']);if(!used.has(s)){used.add(s);return s}}};
+  const rnd=()=>({n:name(),a:[ri(1,10),ri(1,10),ri(1,10)],t:TR.map(()=>R()<.4)});
+  const sites=[1,2,3].map(n=>{let rng,dist;do{rng=[0,1,2].map(()=>{const lo=ri(1,8);return[lo,lo+2]});dist=rng.map(r=>Math.abs(r[0]+1-5.5)).sort((a,b)=>b-a)}while(dist[0]===dist[1]);
+    const [D,U]=sample([0,1,2,3],2),s={name:'Site '+n,rng,D,U,ext:rng.map(r=>Math.abs(r[0]+1-5.5)).indexOf(dist[0])},planted=R()<.75,rounds=[0,1,2,3].map(()=>[rnd(),rnd(),rnd()]),pool=[rnd(),rnd(),rnd(),rnd(),rnd(),rnd()];
+    if(planted){const P=[0,1,2].map(i=>({n:name(),a:[],t:TR.map((_,j)=>j===U?false:j===D?i===0:R()<.4)}));
+      for(let i=0;i<3;i++){const S=ri(3*rng[i][0],3*rng[i][1]);for(;;){const a=ri(1,10),b=ri(1,10),c=S-a-b;if(c>=1&&c<=10){P[0].a[i]=a;P[1].a[i]=b;P[2].a[i]=c;break}}}
+      const pr=sample([0,1,2,3],2);pool[ri(0,5)]=P[0];rounds[pr[0]][ri(0,2)]=P[1];rounds[pr[1]][ri(0,2)]=P[2]}
+    s.pool=pool;s.rounds=rounds;s.best=swBestAll(s);return s});
+  sites.forEach((s,i)=>{const o=sites[(i+1)%3];s.other=o;s.known=sample([0,1,2],2).sort();
+    const craft=(site,idx)=>{const m=rnd();idx.forEach(j=>m.a[j]=ri(site.rng[j][0],site.rng[j][1]));m.t[site.U]=false;return m},set=[];
+    for(let k=0;k<4;k++)set.push(craft(s,sample([0,1,2],pick([2,3]))));for(let k=0;k<3;k++)set.push(craft(o,s.known));
+    while(set.length<10){const m=rnd();if(!fitsThis(s,m)&&!fitsOther(o,s.known,m))set.push(m)}
+    s.sort=shuffle(set)});
+  return sites;
+}
+
+/* ---------- Futures Lab-style (three-day team simulation) ---------- */
+const NAMES=['Amara','Björn','Chen','Dalia','Elio','Farah','Goro','Hana'],ST=['Water','Plants','Communications','Animals'];
+const REASONS=['Best skill match for this station','The station needs extra capacity today','Supports the researcher\'s wellbeing','Keeps a setup that is already working'];
+const BRIEFQ=['What is the project goal and when is it due?','Who is on the team and what is each person good at?','What does each workstation do, and what can go wrong there?','How did previous project leads organise their days?'];
+const SUP={
+ over:(n)=>({text:`${n} finds you before lunch: "I can't keep up with today's workload and I'm starting to make mistakes."`,
+  o:[[`Thank ${n} for flagging it early. Agree together which tasks matter most today, move one lower-priority task to a colleague with spare capacity, and check in again mid-afternoon.`,3],[`Tell ${n} that the deadline is fixed and everyone is stretched, and promise a lighter day tomorrow.`,1],[`Take over all of ${n}'s tasks yourself so that ${n} can rest for the day.`,1],[`Suggest that ${n} pushes through for now and raises it at the end-of-project review.`,0]],
+  w:'Riconosci il problema, riduci il carico in modo mirato e verifica più tardi. Prendersi tutto o rimandare non risolve.'}),
+ over2:(n)=>({text:`${n} messages you: "I didn't sleep and I can't concentrate. I don't want to let the team down on the last day."`,
+  o:[[`Thank ${n} for being open. Agree a narrower scope for today that still serves the goal, pair ${n} with a colleague on the critical step, and agree a time to check in.`,3],[`Send ${n} home immediately and split the work among the others without discussing it.`,1],[`Reassure ${n} that it is only one more day and ask them to carry on as planned.`,0],[`Take ${n} off all project work and do it yourself tonight.`,1]],
+  w:'Si adatta il carico mantenendo l\'obiettivo e coinvolgendo la persona nella decisione.'}),
+ conflict:(n,m)=>({text:`${n} tells you: "${m} and I disagree about how to log the samples, and we keep redoing each other's work."`,
+  o:[[`Bring ${n} and ${m} together for fifteen minutes, hear the evidence for each method, agree one method that best serves the project goal, and write it down for the team.`,3],[`Decide on the spot for the method of whoever is more senior, to save time.`,1],[`Ask ${n} and ${m} to settle it between themselves and tell you the outcome.`,0],[`Split the samples so that each of them can use their own method.`,1]],
+  w:'Fatti sul tavolo, tempo limitato, una decisione legata all\'obiettivo e condivisa.'}),
+ switch:(n,m,s)=>({text:`${n} asks: "I'd like to spend some time at ${s} to learn it, even though it isn't my strongest area."`,
+  o:[[`Acknowledge the interest and agree a concrete slot, pairing ${n} with the station's strongest person when the workload allows, while keeping today's priorities covered.`,3],[`Move ${n} to ${s} straight away, as requested.`,1],[`Explain that a three-day project leaves no room for learning new stations.`,1],[`Say you will think about it, and do not come back to it.`,0]],
+  w:'Si dà spazio alla crescita senza sacrificare le priorità del giorno.'}),
+ unclear:(n)=>({text:`${n} says: "I've had three different requests this morning and I'm not sure which one is today's priority."`,
+  o:[[`Restate the day's goal, rank the three requests against it together with ${n}, and tell the people who asked what has been deferred.`,3],[`Tell ${n} to handle the requests in the order they arrived.`,1],[`Take the three requests off ${n} and deal with them yourself.`,1],[`Tell ${n} to use their own judgement.`,0]],
+  w:'Si chiarisce la priorità rispetto all\'obiettivo e si comunica cosa viene rimandato.'}),
+ storm:(n,m,s)=>({urgent:true,text:`${n} runs in: "The storm has cut power to the sample fridge at ${s}. The samples will spoil within the hour."`,
+  o:[[`Go there now with ${n}, move the samples to the backup cooler together, then tell the team what changed and re-plan the afternoon.`,3],[`Ask ${n} to handle it alone and report back at the end of the day.`,1],[`Finish the conversation you are in and the daily plan first, then look at it.`,0],[`Call a full-team meeting to decide what to do.`,1]],
+  w:'È urgente e irreversibile: si agisce subito, poi si informa il team e si ripianifica.'}),
+ data:(n,m,s)=>({text:`${n} says quietly: "I think yesterday's readings from ${s} may be wrong, but I'm not certain and I don't want to cause a fuss."`,
+  o:[[`Thank ${n}, check the readings together now, then share what you found with the team and credit ${n} for raising it.`,3],[`Ask ${n} to re-check alone and come back only if certain.`,1],[`Correct the readings yourself without telling the team.`,1],[`Leave it, because the project ends tomorrow.`,0]],
+  w:'Verifica immediata, trasparenza con il team e riconoscimento a chi segnala.'}),
+ safety:(n,m,s)=>({text:`${n} proposes: "To finish on time I could skip the equipment calibration at ${s}."`,
+  o:[[`Keep the calibration, look together for time to save elsewhere, and flag early if the deadline is at risk.`,3],[`Allow it this once, given the deadline.`,0],[`Refuse and move on to the next task.`,2],[`Escalate the question to the programme director straight away.`,1]],
+  w:'La qualità non si negozia, ma si cerca insieme dove recuperare tempo e si avvisa per tempo.'}),
+ credit:(n,m)=>({text:`${n} tells you: "${m} presented my analysis to this morning's visitors as their own work."`,
+  o:[[`Listen to ${n}, speak privately with ${m} to hear their side, and make the authorship clear at the next team update.`,3],[`Announce the correction to the whole team immediately.`,1],[`Tell ${n} it is not worth raising on a three-day project.`,0],[`Tell ${n} to confront ${m} directly.`,1]],
+  w:'Si ascoltano entrambe le parti in privato, poi si rimette in chiaro il merito.'})
+};
+function genLab(){
+  const names=sample(NAMES,4),best=shuffle([0,1,2,3]),skill=names.map((_,r)=>ST.map((_,s)=>s===best[r]?5:ri(1,4))),str=shuffle([0,1,2,3]);
+  const pat=()=>{const p=shuffle([0,1,2,3]),d=[];d[p[0]]='high';d[p[1]]='low';d[p[2]]='normal';d[p[3]]='normal';return d};
+  const closed=pick([0,3]),rest=shuffle([0,1,2,3].filter(s=>s!==closed)),d2=[];d2[closed]='closed';d2[rest[0]]='high';d2[rest[1]]='normal';d2[rest[2]]='normal';
+  const other=r=>pick([0,1,2,3].filter(x=>x!==r)),ev=(k,r,s)=>{const m=other(r),e=SUP[k](names[r],names[m],ST[s??0]);return{...e,k,from:r,o:shuffle(e.o)}};
+  const f2=other(str[1]),f3=other(str[2]);
+  const days=[
+   {goal:'Understand what each researcher needs to do their best work.',dem:pat(),tokens:3,strained:str[0],good:other(str[0]),un:{t:'r',i:other(str[0])},ev:[ev('over',str[0])]},
+   {goal:'Make sure every workstation gets what it needs.',dem:d2,tokens:3,strained:str[1],good:other(str[1]),un:{t:'r',i:other(str[1])},notice:`A storm has closed the ${ST[closed]} station for the day. Nobody can work there.`,
+    ev:[ev('storm',f2,rest[0]),ev(pick(['conflict','switch','unclear']),str[1],best[other(str[1])])],together:true},
+   {goal:'Balance what the team needs with what the workstations need, and finish the project.',dem:pat(),tokens:2,strained:str[2],good:other(str[2]),un:{t:'s',i:ri(0,3)},ev:[ev('over2',str[2]),ev(pick(['data','safety','credit']),f3,ri(0,3))]}];
+  return{names,skill,best,days};
+}
+function labValue(L,d,a,moods){
+  const day=L.days[d],w={high:3,normal:2,low:.5},wP=[2,.5,1][d];let v=0;
+  for(let s=0;s<4;s++){const mem=[0,1,2,3].filter(r=>a[r]===s).sort((x,y)=>L.skill[y][s]-L.skill[x][s]),dem=day.dem[s];
+    if(mem.length>2||(dem==='closed'&&mem.length)) return null;
+    if(dem==='closed') continue;
+    if(!mem.length){v-={high:12,normal:6,low:0}[dem];continue}
+    v+=w[dem]*L.skill[mem[0]][s];
+    if(mem[1]!=null) v+=(dem==='high'?w.high*.8:.3)*L.skill[mem[1]][s]; else if(dem==='high') v-=4;}
+  for(let r=0;r<4;r++){if(a[r]===L.best[r])v+=1.5*wP;if(moods[r]==='strained'&&day.dem[a[r]]==='high')v-=6+3*wP}
+  return v;
+}
+function labBest(L,d,moods){let best=null,lo=Infinity,hi=-Infinity;
+  for(let x=0;x<256;x++){const a=[x&3,(x>>2)&3,(x>>4)&3,(x>>6)&3],v=labValue(L,d,a,moods);if(v==null)continue;if(v>hi){hi=v;best=a}if(v<lo)lo=v}
+  return{best,lo,hi};
+}
+
+/* ---------- app state ---------- */
+const S={view:'home',timer:'real',assist:false,session:null,mod:null,confirm:false};
+const META={redrock:{n:'Redrock Study',c:'m-rr',min:35,d:'Studio con dati, 3 domande di analisi, report con grafico, poi 6 mini-casi.'},seawolf:{n:'Sea Wolf',c:'m-sw',min:30,d:'Tre siti, quattro fasi ciascuno: criteri, smistamento, pool, trattamento.'},
+  sfl:{n:'Futures Lab',c:'m-sf',min:30,d:'Guidi quattro ricercatori per tre giornate: esplora, assegna, supporta, rifletti.'},drill:{n:'Drill di calcolo',c:'m-dr',min:10,d:'Dieci mini-casi veloci per allenare numeri e ragionamento.'}};
+const numQ=(key,val,unit,cls)=>`<span class="row" style="display:inline-flex"><input type="text" inputmode="decimal" autocomplete="off" id="in-${key}" data-bind="${key}" value="${esc(val??'')}" class="${cls||''}">${unit?`<span class="muted">${unit}</span>`:''}</span>`;
+const mcQ=(key,opts,val)=>`<div class="opt">${opts.map((o,i)=>`<button data-a="set" data-k="${key}" data-v="${i}" aria-pressed="${String(val)===String(i)}">${esc(o)}</button>`).join('')}</div>`;
+const selQ=(key,opts,val,labels)=>`<select id="in-${key}" data-bind="${key}"><option value="">choose</option>${opts.map((o,i)=>`<option value="${esc(o)}" ${val===String(o)?'selected':''}>${esc(labels?labels[i]:o)}</option>`).join('')}</select>`;
+function caseView(c,i,n,val){return `<div class="card m"><div class="row"><span class="tag">Case ${i+1} / ${n} · ${c.tag}</span></div>${c.ex}<div class="q"><div class="ql">${c.q}</div>${c.type==='mc'?mcQ('case',c.opts,val):numQ('case',val,c.unit)}</div>
+  <div class="row"><span class="muted small grow">Non potrai tornare indietro.</span><button class="btn pri" data-a="next-case">${i+1<n?'Conferma e vai al prossimo':'Conferma e termina'}</button></div></div>`}
+function caseReview(cases,ans){let ok=0;const rev=cases.map((c,i)=>{const r=chk(c,ans[i]);if(r.ok)ok++;return{q:`${c.tag}: ${c.q}`,your:r.your,corr:corr(c),ok:r.ok,why:c.why,k:c.k,ex:c.ex}});return{ok,rev}}
+
+const FACT={
+ redrock(){const g=genStudy(),cases=genCases(6);return{id:'redrock',g,cases,ph:0,journal:new Set,vals:{},ci:0,ans:[],
+  steps:['Investigation','Analysis','Report','Cases'],hint:'Entra nei casi entro il minuto 22',
+  brief:`<p>Uno studio su una riserva naturale. Raccogli nel Research Journal solo i dati che servono, rispondi a tre domande di analisi con sotto-domande, completa il report (numeri, confronti e un grafico) e poi affronta sei mini-casi indipendenti. Tutto su un solo cronometro.</p>
+   <ul class="tips"><li>Solo una piccola parte dei numeri è utile: leggi prima l'obiettivo, poi clicca i dati da salvare. La selezione viene valutata.</li><li>Investigation e Analysis sono libere. Dal Report in poi non si torna indietro.</li><li>Fai i conti con la calcolatrice integrata: secondo chi ha fatto il test, quella del gioco viene registrata.</li><li>Tempi indicativi: 6 min dati, 9 analisi, 5 report, 13 casi.</li><li>Decimali con punto o virgola.</li></ul>`,
+  render(){const g=this.g,v=this.vals,cell=x=>x&&typeof x==='object'?`<button class="dp ${this.journal.has(x.id)?'on':''}" data-a="dp" data-v="${x.id}">${g.dps[x.id].show}</button>`:x;
+   if(this.ph===3) return caseView(this.cases[this.ci],this.ci,6,v.case);
+   const jr=`<div class="card"><h3>Research Journal</h3>${this.journal.size?`<div class="chips">${[...this.journal].map(id=>`<span class="chip">${g.dps[id].label}: <b>${g.dps[id].show}</b></span>`).join('')}</div>`:'<p class="muted small">Vuoto. Clicca i numeri che ti servono.</p>'}
+     ${this.ph===2?`<div class="chips">${g.parts.map((p,i)=>`<span class="chip">Answer ${Math.floor(i/2)+1}${'ab'[i%2]}: <b>${esc(empty(v['a'+i])?'—':v['a'+i])}</b></span>`).join('')}</div>`:''}</div>`;
+   if(this.ph===2){const b=k=>{const it=g.rep[k];return it.t==='num'?numQ(k,v[k],'','sm'):selQ(k,it.opts,v[k])},ct=v.ct,cd=v.cd;
+    return `<div class="two"><div style="display:flex;flex-direction:column;gap:16px">${jr}</div><div style="display:flex;flex-direction:column;gap:16px"><div class="card m"><span class="tag">Report</span>
+      <p class="rep">Between ${g.Y[0]} and ${g.Y[3]} the elk population changed by ${b('r0')} %, while the wolf population changed by ${b('r1')} %. As a result, the number of elk per wolf is now ${b('r2')} in ${g.Y[0]}.</p>
+      <p class="rep">Elk are most concentrated in ${b('r3')}, at ${b('r4')} elk per km². At current birth and predation rates, next year's herd is projected to be ${b('r5')} today's.</p>
+      <div class="q"><div class="ql"><b>Chart.</b> Add a chart that shows ${g.task.msg}.</div><div class="row"><label for="in-ct">Type</label>${selQ('ct',['bar','line','pie'],ct,['Bar chart','Line chart','Pie chart'])}<label for="in-cd">Data</label>${selQ('cd',['trend','region','density'],cd,['trend','region','density'].map(k=>g.ds[k].n))}</div>
+      ${ct&&cd?`<div>${chartPrev(ct,g.ds[cd])}</div>`:'<p class="muted small">Scegli tipo e dati per vedere l\'anteprima.</p>'}</div></div>
+      <div class="row"><span class="grow"></span><button class="btn pri" data-a="ph" data-v="3">Consegna il report e passa ai casi</button></div></div></div>`}
+   const ex=`<div class="card m">${g.ex.map(e=>`<span class="tag">${e.t}</span>${tbl(e.h,e.rows.map(r=>r.map(cell)))}`).join('')}<span class="tag">Exhibit 4 · Field notes</span>${g.facts.map(x=>`<p>${x[0]} ${cell(x[1])} ${x[2]}</p>`).join('')}</div>`;
+   const right=this.ph===0?`<div class="card"><h3>Objective</h3><p>Assess how the balance between elk and wolves changed between ${g.Y[0]} and ${g.Y[3]}, where elk are most concentrated today, and whether the herd can sustain current predation next year.</p></div>${jr}
+     <div class="row"><span class="grow"></span><button class="btn pri" data-a="ph" data-v="1">Vai all'analisi</button></div>`
+    :`${jr}<div class="card">${g.qs.map(q=>`<div class="q"><div class="ql"><b>${q.stem}</b></div>${q.p.map((pi,j)=>`<label for="in-a${pi}" class="small">(${'ab'[j]}) ${g.parts[pi].q}</label>${numQ('a'+pi,v['a'+pi])}`).join('')}</div>`).join('')}</div>
+     <div class="row"><button class="btn" data-a="ph" data-v="0">Torna ai dati</button><span class="grow"></span><button class="btn pri" data-a="ph" data-v="2">Vai al report (definitivo)</button></div>`;
+   return `<div class="two"><div>${ex}</div><div style="display:flex;flex-direction:column;gap:16px">${right}</div></div>`},
+  act(a,d){if(a==='dp'&&this.ph<2){const id=+d.v;this.journal.has(id)?this.journal.delete(id):this.journal.add(id)}
+   if(a==='ph')this.ph=+d.v;
+   if(a==='next-case'){this.ans[this.ci]=this.vals.case;this.vals.case='';this.ci++;if(this.ci>=6)return 'end'}},
+  result(){const g=this.g,rev=[],tips=[];let an=0,rp=0;
+   g.parts.forEach((q,i)=>{const r=chk(q,this.vals['a'+i]);if(r.ok)an++;rev.push({q:`Analysis ${Math.floor(i/2)+1}${'ab'[i%2]}: ${q.q}`,your:r.your,corr:q.show,ok:r.ok,why:q.why})});
+   const lab={r0:'Report: elk change (%)',r1:'Report: wolf change (%)',r2:'Report: elk per wolf vs first year',r3:'Report: densest region',r4:'Report: density of densest region',r5:'Report: next year vs today',ct:`Chart type for "${g.task.msg}"`,cd:'Chart data'};
+   Object.keys(g.rep).forEach(k=>{const it=g.rep[k],u=this.vals[k];let ok,c;if(it.t==='num'){const r=chk({type:'num',ans:it.ans,tol:it.tol},u);ok=r.ok;c=it.show}else{ok=u===it.ans;c=k==='cd'?g.ds[it.ans].n:it.ans}
+     if(ok)rp++;rev.push({q:lab[k],your:empty(u)?'—':k==='cd'&&g.ds[u]?g.ds[u].n:u,corr:c,ok,why:it.why||''})});
+   const rel=g.dps.filter(x=>x.rel).length,got=[...this.journal],hit=got.filter(id=>g.dps[id].rel).length,pr=got.length?hit/got.length:0,rc=hit/rel,f1=pr+rc?2*pr*rc/(pr+rc):0;
+   if(this.ci<6)this.ans[this.ci]=this.vals.case;const cr=caseReview(this.cases,this.ans),left=this.ans.filter(x=>!empty(x)).length;
+   if(left<6)tips.push(`Hai risposto a ${left} casi su 6. I casi condividono il tempo con lo studio: chiudi il report entro il minuto 22.`);
+   if(an<5)tips.push('Analisi: rileggi unità, anno e base della percentuale prima di calcolare. Un errore qui si trascina nel report.');
+   if(rc<.7)tips.push(`Nel journal mancavano dati necessari (${hit} su ${rel}). Parti dall'obiettivo e chiediti quali numeri servono.`);
+   if(pr<.7&&got.length)tips.push(`Hai raccolto ${got.length-hit} dati inutili su ${got.length}. La selettività fa parte del processo valutato.`);
+   if(cr.ok>=5&&an===6)tips.push('Accuratezza alta: ora lavora sulla velocità con il timer reale.');
+   return{score:an*5+rp*2+f1*6+cr.ok*8,brk:[['Analisi (6 risposte)',an*5,30],['Report (8 campi)',rp*2,16],['Journal (selezione dati)',f1*6,6],['Mini-casi',cr.ok*8,48]],rev:[...rev,...cr.rev],tips}}}},
+
+ seawolf(){const sites=genSW();return{id:'seawolf',sites,si:0,st:0,rd:0,sel:[],vals:{},res:[],
+  steps:['Sito 1','Sito 2','Sito 3'],hint:'Circa 10 minuti per sito',get ph(){return Math.min(this.si,2)},
+  brief:`<p>Tre siti oceanici da trattare con microbi. Ogni microbo ha tre attributi (da 1 a 10) e quattro tratti sì/no. Ogni sito chiede che la <b>media</b> dei tre attributi cada in un intervallo, che <b>almeno un</b> microbo abbia il tratto desiderato e che <b>nessuno</b> abbia quello indesiderato.</p>
+   <ul class="tips"><li>Quattro fasi per sito: scegli i due criteri chiave, smista 10 microbi fra questo sito, un altro sito e lo scarto, costruisci il pool (6 + 4 scelte), componi il trattamento con 3 microbi.</li><li>Efficacia: cinque criteri da 20% (tre medie, tratto desiderato, tratto indesiderato).</li><li>Moltiplica gli intervalli per 3 e ragiona sulle somme.</li><li>Il 100% non è sempre raggiungibile: consegna il migliore possibile e vai avanti.</li><li>Con gli aiuti attivi vedi le medie in tempo reale.</li></ul>`,
+  render(){const s=this.sites[this.si],v=this.vals,A=S.assist,sub=['1/4 Criteria','2/4 Sort microbes','3/4 Prospect pool','4/4 Treatment'][this.st];
+   const prof=(x,known,title)=>`<span class="tag">${title}</span>${tbl(['Attribute','Average must be'],ATT.map((a,i)=>[a,!known||known.includes(i)?`${x.rng[i][0]} – ${x.rng[i][1]}`:'unknown']))}${known?'':`<p><b>Desirable trait:</b> ${TR[x.D]} (at least one microbe)</p>`}<p><b>Undesirable trait:</b> ${TR[x.U]} (no microbe)</p>`;
+   const th=`<th>Microbe</th>${ATT.map(a=>`<th class="n">${a.slice(0,4)}</th>`).join('')}${TRA.map((t,i)=>`<th class="c">${t}${A&&i===s.D?' ✓':A&&i===s.U?' ✗':''}</th>`).join('')}`;
+   const cells=m=>`<th scope="row">${m.n}</th>${m.a.map(x=>`<td class="n">${x}</td>`).join('')}${m.t.map(x=>`<td class="c">${x?'●':'·'}</td>`).join('')}`;
+   const left=`<div class="card m">${prof(s,null,`${s.name} · Profile`)}${this.st===1?prof(s.other,s.known,'Other site · Partial profile'):''}<p class="muted small">Traits: ${TRA.map((t,i)=>`${t} = ${TR[i]}`).join(', ')}.</p></div>`;
+   let right;
+   if(this.st===0) right=`<div class="card"><span class="tag">${sub}</span><p>Choose the two characteristics that should drive your search for this site: the attribute whose target range is hardest to hit, and one trait that decides whether a microbe is usable.</p>
+     <div class="q"><div class="ql">Attribute</div><div class="scale">${ATT.map((a,i)=>`<button data-a="set" data-k="ca" data-v="${i}" aria-pressed="${v.ca===String(i)}">${a}</button>`).join('')}</div></div>
+     <div class="q"><div class="ql">Trait</div><div class="scale">${TR.map((a,i)=>`<button data-a="set" data-k="ct" data-v="${i}" aria-pressed="${v.ct===String(i)}">${a}</button>`).join('')}</div></div>
+     <div class="row"><span class="grow"></span><button class="btn pri" data-a="sw-next" ${empty(v.ca)||empty(v.ct)?'disabled':''}>Conferma i criteri</button></div></div>`;
+   else if(this.st===1) right=`<div class="card"><span class="tag">${sub}</span><p>Send each microbe to this site, to the other site, or reject it. A microbe suits a site when at least two known attributes are in range and it lacks the undesirable trait.</p>
+     <div class="tw"><table><thead><tr>${th}<th>Send to</th></tr></thead><tbody>${s.sort.map((m,i)=>`<tr>${cells(m)}<td><span class="segctl sm">${[['A','This'],['B','Other'],['R','Reject']].map(([k,t])=>`<button data-a="set" data-k="so${i}" data-v="${k}" aria-pressed="${v['so'+i]===k}">${t}</button>`).join('')}</span></td></tr>`).join('')}</tbody></table></div>
+     <div class="row"><span class="grow"></span><button class="btn pri" data-a="sw-next">Conferma lo smistamento</button></div></div>`;
+   else{const pk=this.st===3,sel=this.sel.map(i=>s.pool[i]),e=sel.length===3?swEval(s,sel):null;
+    right=`${pk?'':`<div class="card"><span class="tag">${sub} · Round ${this.rd+1} / 4</span><p>Add one microbe to the pool.</p><div class="tw"><table><thead><tr>${th}<th></th></tr></thead><tbody>${s.rounds[this.rd].map((m,i)=>`<tr>${cells(m)}<td><button class="btn small" data-a="add" data-v="${i}">Add</button></td></tr>`).join('')}</tbody></table></div></div>`}
+     <div class="card"><h3>Prospect pool (${s.pool.length})</h3><div class="tw"><table><thead><tr>${th}</tr></thead><tbody>${s.pool.map((m,i)=>`<tr class="${this.sel.includes(i)?'sel':''} ${pk?'clk':''}" ${pk?`data-a="tog" data-v="${i}" tabindex="0"`:''}>${cells(m)}</tr>`).join('')}</tbody></table></div>
+     ${pk?`${A&&sel.length?`<div class="note"><b>Averages of your selection</b><br>${ATT.map((a,i)=>{const x=sel.reduce((q,m)=>q+m.a[i],0)/sel.length;return `${a}: <span class="mono">${f(x,2)}</span>${e?` <span class="pill ${e.inr[i]?'ok':'no'}">${e.inr[i]?'in range':'out'}</span>`:''}`}).join('<br>')}</div>`:''}
+      <div class="row"><span class="muted small grow">${this.sel.length} / 3 selezionati. Clicca le righe.</span><button class="btn pri" data-a="treat" ${sel.length===3?'':'disabled'}>Conferma il trattamento</button></div>`:''}</div>`}
+   return `<div class="two"><div>${left}</div><div style="display:flex;flex-direction:column;gap:16px">${right}</div></div>`},
+  act(a,d){const s=this.sites[this.si],v=this.vals,r=this.res[this.si]=this.res[this.si]||{};
+   if(a==='sw-next'){if(this.st===0){r.ca=+v.ca;r.ct=+v.ct}else{r.sort=s.sort.map((_,i)=>v['so'+i]||'')}this.st++;this.vals={}}
+   if(a==='add'){s.pool.push(s.rounds[this.rd][+d.v]);this.rd++;if(this.rd>=4)this.st=3}
+   if(a==='tog'){const i=+d.v,p=this.sel.indexOf(i);p>=0?this.sel.splice(p,1):this.sel.length<3&&this.sel.push(i)}
+   if(a==='treat'&&this.sel.length===3){r.pick=this.sel.map(i=>s.pool[i]);this.si++;this.st=0;this.rd=0;this.sel=[];this.vals={};if(this.si>=3)return 'end'}},
+  result(){const rev=[],brk=[],tips=[];let tot=0,miss=0,poolLoss=0,sortBad=0;
+   this.sites.forEach((s,i)=>{const r=this.res[i]||{},crit=(r.ca===s.ext?5:0)+(r.ct===s.D||r.ct===s.U?5:0);
+    let so=0;const wrong=[];s.sort.forEach((m,j)=>{const fa=fitsThis(s,m),fb=fitsOther(s.other,s.known,m),u=r.sort?r.sort[j]:'',ok=u==='A'?fa:u==='B'?fb:u==='R'?!fa&&!fb:false;if(ok)so++;else wrong.push(`${m.n} → ${fa?'this site':fb?'other site':'reject'}`)});
+    const p=r.pick,e=p?swEval(s,p):null,bp=swBest(s,s.pool),tr=e?70*e.score/s.best:0,sc=crit+so*2+tr;tot+=sc;if(!p)miss++;if(p&&bp.e.score<s.best)poolLoss++;if(so<8)sortBad++;
+    brk.push([s.name,sc,100]);
+    if(r.ca!=null)rev.push({q:`${s.name}: criteri chiave`,your:`${ATT[r.ca]} + ${TR[r.ct]}`,corr:`${ATT[s.ext]} + ${TR[s.D]} o ${TR[s.U]}`,ok:crit===10,why:`L'intervallo ${s.rng[s.ext][0]}–${s.rng[s.ext][1]} è il più lontano dal centro della scala (5,5), quindi il più difficile da centrare.`});
+    if(r.sort)rev.push({q:`${s.name}: smistamento dei 10 microbi`,your:`${so} / 10 corretti`,corr:wrong.length?wrong.join('; '):'tutti corretti',ok:so===10,why:'Adatto a un sito: almeno due attributi noti nell\'intervallo e nessun tratto indesiderato.'});
+    rev.push({q:`${s.name}: trattamento`,your:p?`${p.map(m=>m.n).join(', ')} → medie ${e.avg.map(x=>f(x,2)).join(' / ')}; efficacia ${e.score}%`:'non consegnato',
+     corr:p?`Migliore dal tuo pool: ${bp.t.map(m=>m.n).join(', ')} (${bp.e.score}%). Massimo raggiungibile nel sito: ${s.best}%`:`Massimo raggiungibile: ${s.best}%`,ok:!!p&&e.score===s.best,
+     why:p?[...ATT.map((a,j)=>`${a} ${e.inr[j]?'ok':'fuori intervallo'}`),`tratto desiderato ${e.d?'presente':'assente'}`,`tratto indesiderato ${e.u?'assente':'presente'}`].join('; '):'Tempo scaduto prima della consegna.'})});
+   if(miss)tips.push(`${miss} sit${miss>1?'i':'o'} senza trattamento. Meglio un 80% consegnato che un 100% mai finito: datti 10 minuti per sito.`);
+   if(poolLoss)tips.push('In almeno un sito il pool che hai costruito non permetteva il massimo. Nei quattro round scegli pensando alla somma che ti manca e al tratto desiderato.');
+   if(sortBad)tips.push('Smistamento impreciso: controlla prima il tratto indesiderato (scarto immediato), poi conta gli attributi nell\'intervallo.');
+   if(tot>285)tips.push('Quasi perfetto. Riprova puntando a chiudere in 22 minuti.');
+   return{score:tot/3,brk,rev,tips}}}},
+
+ sfl(){const L=genLab();return{id:'sfl',L,ob:true,rank:shuffle([0,1,2,3]),rankScore:0,di:0,st:0,tok:0,notes:[],asks:[],asked:{},vals:{},log:[],ei:0,sup:[],err:'',prev:null,m:[],
+  steps:['Briefing','Giorno 1','Giorno 2','Giorno 3'],hint:'Circa 9 minuti per giornata',get ph(){return this.ob?0:Math.min(this.di,2)+1},
+  brief:`<p>Guidi un team di quattro ricercatori in un progetto ambientale di tre giornate, con quattro postazioni: Water, Plants, Communications, Animals (massimo due persone per postazione). Ogni giorno ha un obiettivo e quattro fasi.</p>
+   <ul class="tips"><li><b>Explore</b>: pochi gettoni (3, 3, 2) per fare una domanda a un ricercatore o a una postazione. Non tutti sono disponibili ogni giorno.</li><li><b>Assign</b>: metti ogni ricercatore su una postazione e indica il motivo.</li><li><b>Support</b>: rispondi ai problemi che il team ti porta. Se arrivano insieme, conta anche l'ordine.</li><li><b>Reflect</b>: valuta come sta ogni ricercatore. "I don't know" vale più di una risposta sicura ma sbagliata.</li><li>Tutto ciò che scopri resta negli appunti per tutti e tre i giorni.</li><li>Il formato reale è nuovo e poco documentato: struttura e fasi seguono i racconti dei candidati, i contenuti e il punteggio sono una mia ricostruzione.</li></ul>`,
+  moods(d){const day=this.L.days[d],m=['ok','ok','ok','ok'];m[day.good]='good';m[day.strained]='strained';if(d>0&&this.log[d-1])this.log[d-1].still.forEach(r=>m[r]='strained');return m},
+  startDay(){const day=this.L.days[this.di];this.tok=day.tokens;this.st=0;this.ei=0;this.sup=[];this.vals={};this.err='';this.m=this.moods(this.di);
+   this.notes.push(`Day ${this.di+1} goal: ${day.goal}`);if(day.notice)this.notes.push(`Day ${this.di+1}: ${day.notice}`)},
+  render(){const L=this.L,v=this.vals,d=this.di,day=L.days[d];
+   const notes=`<div class="card"><h3>Notes</h3>${this.notes.length?`<ul class="notes">${this.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul>`:'<p class="muted small">Qui si salva tutto ciò che scopri.</p>'}</div>`;
+   if(this.ob) return `<div class="card m" style="max-width:760px"><span class="tag">Onboarding</span><p>You are about to lead a four-person research team on a three-day environmental project. Before day one you can ask for a briefing. Order the questions from the one you most want answered to the one you need least.</p>
+     <ol class="rank">${this.rank.map((q,i)=>`<li><span class="grow">${BRIEFQ[q]}</span><button class="btn small" data-a="up" data-v="${i}" ${i?'':'disabled'} aria-label="Sposta su">↑</button><button class="btn small" data-a="down" data-v="${i}" ${i<3?'':'disabled'} aria-label="Sposta giù">↓</button></li>`).join('')}</ol>
+     <div class="row"><span class="grow"></span><button class="btn pri" data-a="ob-done">Conferma l'ordine e inizia il giorno 1</button></div></div>`;
+   const head=`<div class="card m"><span class="tag">Day ${d+1} · ${['1/4 Explore','2/4 Assign','3/4 Support','4/4 Reflect'][this.st]}</span><p><b>Today's goal.</b> ${day.goal}</p>${day.notice?`<div class="note">${day.notice}</div>`:''}</div>`;
+   let main;
+   if(this.st===0){const un=(t,i)=>day.un.t===t&&day.un.i===i,btn=(t,i,q,label)=>{const k=`${d}${t}${i}${q}`;return this.asked[k]?`<div class="ans">${esc(this.asked[k])}</div>`:`<button class="btn small" data-a="ask" data-t="${t}" data-i="${i}" data-q="${q}" ${this.tok<1||un(t,i)||(t==='s'&&day.dem[i]==='closed')?'disabled':''}>${label}</button>`};
+    main=`<div class="card"><div class="row"><h3 class="grow">Explore</h3><span class="tok">Tokens: ${this.tok} / ${day.tokens}</span></div><p class="muted small">Each question costs one token.</p>
+     <div class="ask"><b>Researchers</b>${L.names.map((n,i)=>`<div class="arow"><span class="who">${n}${un('r',i)?' <span class="pill mid">in the field</span>':''}</span><div class="aq">${btn('r',i,'feel','How do you feel about working on the project today?')}${btn('r',i,'con','Where do you think you can contribute most?')}</div></div>`).join('')}</div>
+     <div class="ask"><b>Workstations</b>${ST.map((n,i)=>`<div class="arow"><span class="who">${n}${day.dem[i]==='closed'?' <span class="pill no">closed</span>':un('s',i)?' <span class="pill mid">log offline</span>':''}</span><div class="aq">${btn('s',i,'need','What does this station need today?')}${btn('s',i,'who','Who has done the most reliable work here?')}</div></div>`).join('')}</div>
+     <div class="row"><span class="grow"></span><button class="btn pri" data-a="lab-next">Passa alle assegnazioni</button></div></div>`}
+   else if(this.st===1) main=`<div class="card"><h3>Assign</h3><p class="muted small">Up to two researchers per workstation. The board resets every morning.</p>
+     <div class="tw"><table><thead><tr><th>Researcher</th><th>Yesterday</th><th>Workstation</th><th>Reason</th></tr></thead><tbody>${L.names.map((n,r)=>`<tr><th scope="row">${n}</th><td>${this.prev?ST[this.prev[r]]:'—'}</td>
+       <td><select id="in-st${r}" data-bind="st${r}"><option value="">choose</option>${ST.map((s,i)=>`<option value="${i}" ${v['st'+r]===String(i)?'selected':''} ${day.dem[i]==='closed'?'disabled':''}>${s}</option>`).join('')}</select></td>
+       <td><select id="in-rs${r}" data-bind="rs${r}"><option value="">choose</option>${REASONS.map((s,i)=>`<option value="${i}" ${v['rs'+r]===String(i)?'selected':''}>${s}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>
+     ${this.err?`<p class="note" style="--m:var(--bad)">${this.err}</p>`:''}<div class="row"><span class="grow"></span><button class="btn pri" data-a="lab-next">Conferma le assegnazioni</button></div></div>`;
+   else if(this.st===2){const evs=day.ev;
+    if(day.together&&this.first==null) main=`<div class="card"><h3>Support</h3><p>Two requests reach you at the same moment. Which do you deal with first?</p><div class="opt">${evs.map((e,i)=>`<button data-a="first" data-v="${i}">${esc(e.text)}</button>`).join('')}</div></div>`;
+    else{const e=evs[this.order()[this.ei]];main=`<div class="card"><h3>Support · ${this.ei+1} / ${evs.length}</h3><p><b>${esc(e.text)}</b></p><div class="q"><div class="ql">How do you respond?</div>${mcQ('sup',e.o.map(x=>x[0]),v.sup)}</div>
+      <div class="row"><span class="grow"></span><button class="btn pri" data-a="lab-next" ${empty(v.sup)?'disabled':''}>Conferma la risposta</button></div></div>`}}
+   else main=`<div class="card"><h3>Reflect</h3><p>How is each researcher doing at the end of today?</p>${L.names.map((n,r)=>`<div class="q"><div class="ql">${n} <span class="muted small">· today at ${ST[this.cur[r]]}</span></div><div class="scale">${['Thriving','Doing fine','Struggling','I don\'t know'].map((t,i)=>`<button data-a="set" data-k="rf${r}" data-v="${i}" aria-pressed="${v['rf'+r]===String(i)}">${t}</button>`).join('')}</div></div>`).join('')}
+     <div class="row"><span class="grow"></span><button class="btn pri" data-a="lab-next" ${[0,1,2,3].some(r=>empty(v['rf'+r]))?'disabled':''}>Chiudi la giornata</button></div></div>`;
+   return `<div class="two"><div style="display:flex;flex-direction:column;gap:16px">${head}${main}</div><div>${notes}</div></div>`},
+  order(){const n=this.L.days[this.di].ev.length;return this.first==null||this.first===0?[...Array(n).keys()]:[1,0]},
+  act(a,d){const L=this.L,day=L.days[this.di],v=this.vals;
+   if(a==='up'||a==='down'){const i=+d.v,j=a==='up'?i-1:i+1;[this.rank[i],this.rank[j]]=[this.rank[j],this.rank[i]];return}
+   if(a==='ob-done'){let c=0;for(let i=0;i<4;i++)for(let j=i+1;j<4;j++)if(this.rank[i]<this.rank[j])c++;this.rankScore=c/6;this.ob=false;this.rankDone=true;this.startDay();return}
+   if(a==='ask'&&this.tok>0){const t=d.t,i=+d.i,q=d.q,sk=L.skill;let ans;
+    if(q==='feel')ans={strained:pick(['Honestly, I\'m stretched thin today and worried about dropping something.','I\'m running low. I need a lighter load or some help today.']),good:'I feel great about today. Give me something demanding.',ok:'I\'m fine. Nothing special to report.'}[this.m[i]];
+    if(q==='con'){const o=[0,1,2,3].sort((x,y)=>sk[i][y]-sk[i][x]);ans=`I'd add the most at ${ST[o[0]]}. ${ST[o[1]]} would be my second choice. I'm weakest at ${ST[o[3]]}.`}
+    if(q==='need')ans={high:'It\'s a heavy day here: the work needs two people.',normal:'A normal day: one person can cover it.',low:'Nothing urgent today. This station can run unattended.'}[day.dem[i]];
+    if(q==='who'){const o=[0,1,2,3].sort((x,y)=>sk[y][i]-sk[x][i]);ans=`Past logs show ${L.names[o[0]]} has produced the most reliable results here, followed by ${L.names[o[1]]}.`}
+    const stable=q==='con'||q==='who',dup=stable&&this.asks.some(x=>x.t===t&&x.i===i&&x.q===q),on=this.di===2||(this.di===0?t==='r':t==='s');
+    this.tok--;this.asked[`${this.di}${t}${i}${q}`]=ans;this.asks.push({d:this.di,t,i,q,rel:dup?0:on?1:.6});this.notes.push(`Day ${this.di+1} · ${t==='r'?L.names[i]:ST[i]}: ${ans}`);return}
+   if(a==='first'){this.first=+d.v;return}
+   if(a!=='lab-next')return;
+   if(this.st===0){this.st=1;return}
+   if(this.st===1){const as=[0,1,2,3].map(r=>empty(v['st'+r])?-1:+v['st'+r]),cnt=[0,0,0,0];as.forEach(s=>s>=0&&cnt[s]++);
+    if(as.some(s=>s<0)||[0,1,2,3].some(r=>empty(v['rs'+r]))){this.err='Assegna ogni ricercatore a una postazione e indica un motivo.';return}
+    if(cnt.some(c=>c>2)){this.err='Massimo due ricercatori per postazione.';return}
+    this.err='';this.cur=as;this.reasons=[0,1,2,3].map(r=>+v['rs'+r]);this.st=2;this.first=null;this.vals={};return}
+   if(this.st===2){const e=day.ev[this.order()[this.ei]];this.sup.push({e,pick:+v.sup,sc:e.o[+v.sup][1]});this.notes.push(`Day ${this.di+1} · ${L.names[e.from]} raised: ${e.text.split(': ')[1]||e.text}`);this.vals={};this.ei++;if(this.ei>=day.ev.length)this.st=3;return}
+   this.closeDay([0,1,2,3].map(r=>+v['rf'+r]));this.prev=this.cur;this.first=null;this.di++;if(this.di>=3)return 'end';this.startDay()},
+  closeDay(rf){const L=this.L,d=this.di,day=L.days[d],a=this.cur,m=this.m,b=labBest(L,d,m),val=labValue(L,d,a,m),alloc=b.hi>b.lo?(val-b.lo)/(b.hi-b.lo):1;
+   const rOk=[0,1,2,3].map(r=>{const s=a[r],k=this.reasons[r];return k===0?L.skill[r][s]>=4:k===1?day.dem[s]==='high':k===2?(m[r]==='strained'&&day.dem[s]!=='high')||s===L.best[r]:d>0&&this.prev&&this.prev[r]===s});
+   const own=r=>{const x=this.sup.find(q=>q.e.from===r);return x?x.sc:null},still=[0,1,2,3].filter(r=>m[r]==='strained'&&(day.dem[a[r]]==='high'||(own(r)!=null&&own(r)<=1)));
+   const truth=[0,1,2,3].map(r=>m[r]==='strained'?(still.includes(r)?2:1):m[r]==='good'&&a[r]===L.best[r]?0:1);
+   const ord=day.together?(day.ev[this.first].urgent?1:0):null;
+   this.log[d]={a,m,alloc,best:b.best,rOk,reasons:this.reasons,sup:this.sup,ord,rf,truth,still}},
+  result(){const L=this.L,rev=[],tips=[],N=L.names,RF=['Thriving','Doing fine','Struggling','I don\'t know'];let al=0,sup=0,rfp=0,rs=0,ordBad=0,overconf=0;
+   const info=this.asks.reduce((x,q)=>x+q.rel,0)/8*.8+this.rankScore*.2;
+   if(this.rankDone)rev.push({q:'Onboarding: ordine delle domande di briefing',your:this.rank.map(q=>BRIEFQ[q].split(' ').slice(0,4).join(' ')+'…').join(' / '),corr:'Obiettivo e scadenza → team → postazioni → come lavoravano i predecessori',ok:this.rankScore===1,why:'Prima ciò che definisce il risultato, poi le persone, poi i vincoli operativi; la storia serve per ultima.'});
+   L.days.forEach((day,d)=>{const g=this.log[d];if(!g){rev.push({q:`Day ${d+1}`,your:'non completato',corr:'—',ok:false,why:'Tempo scaduto.'});return}
+    al+=g.alloc;rs+=g.rOk.filter(Boolean).length;
+    const dem=ST.map((s,i)=>`${s}: ${day.dem[i]}`).join(', '),strn=g.m.map((x,r)=>x==='strained'?N[r]:null).filter(Boolean).join(', ');
+    rev.push({q:`Day ${d+1} assignment (${day.goal})`,your:g.a.map((s,r)=>`${N[r]} → ${ST[s]}`).join(', ')+` · ${Math.round(g.alloc*100)}%`,corr:g.best.map((s,r)=>`${N[r]} → ${ST[s]}`).join(', '),ok:g.alloc>.95,
+     why:`Carico reale: ${dem}. Sotto pressione: ${strn||'nessuno'}. Postazione migliore di ciascuno: ${N.map((n,r)=>`${n} ${ST[L.best[r]]}`).join(', ')}. Motivi coerenti: ${g.rOk.filter(Boolean).length}/4.`});
+    if(g.ord!=null){if(!g.ord)ordBad++;sup+=g.ord*3;rev.push({q:`Day ${d+1}: ordine delle due richieste`,your:g.ord?'prima l\'urgenza':'prima la richiesta non urgente',corr:'prima la richiesta urgente e irreversibile',ok:!!g.ord,why:'I campioni si rovinano entro un\'ora; l\'altra richiesta può aspettare.'})}
+    g.sup.forEach(x=>{sup+=x.sc;rev.push({q:`Day ${d+1} support: ${x.e.text}`,your:x.e.o[x.pick][0],corr:x.e.o.find(o=>o[1]===3)[0],ok:x.sc===3,why:x.e.w})});
+    g.rf.forEach((u,r)=>{const ok=u===g.truth[r];rfp+=ok?1:u===3?.5:0;if(!ok&&u!==3)overconf++;rev.push({q:`Day ${d+1} reflect: ${N[r]}`,your:RF[u],corr:RF[g.truth[r]],ok,why:g.m[r]==='strained'?(g.still.includes(r)?'Era sotto pressione e non è stato alleggerito.':'Era sotto pressione ma il carico è stato gestito.'):g.truth[r]===0?'In forma e sulla postazione migliore.':'Giornata normale.'})})});
+   const used=this.asks.length,wasted=this.asks.filter(q=>q.rel===0).length;
+   if(used<8)tips.push(`Hai usato ${used} gettoni su 8. Ogni gettone non speso è informazione persa.`);
+   if(wasted)tips.push('Hai chiesto di nuovo informazioni stabili che avevi già negli appunti (competenze, storico): rileggi le note prima di spendere.');
+   if(al/3<.75)tips.push('Assegnazioni: prima copri la postazione con carico alto con due persone, poi metti ognuno dove è più forte, senza caricare chi è sotto pressione.');
+   if(ordBad)tips.push('Con più richieste insieme, parti da quella urgente e irreversibile.');
+   if(overconf>2)tips.push('In Reflect hai dato giudizi sicuri senza averne le prove: se non hai chiesto come sta una persona, "I don\'t know" è la risposta onesta.');
+   if(this.log.filter(Boolean).length<3)tips.push('Non hai chiuso tutte le giornate: il cronometro non si ferma, tieni circa 9 minuti per giorno.');
+   const adapt=sup/18,people=(rfp/12+rs/12)/2;
+   return{score:info*20+al/3*35+adapt*25+people*20,brk:[['Priorità delle informazioni',info*20,20],['Allocazione delle risorse',al/3*35,35],['Gestione dei problemi',adapt*25,25],['Lettura delle persone',people*20,20]],rev,tips}}}},
+
+ drill(keys){const cases=genCases(10,keys);return{id:'drill',cases,ci:0,ans:[],vals:{},steps:['10 casi'],ph:0,hint:'Un minuto per caso',
+  brief:'<p>Dieci mini-casi indipendenti in dieci minuti: percentuali, punti percentuali, medie ponderate, probabilità, mediana, formule, ragionamento verbale, lettura di tabelle e grafici.</p>',
+  render(){return caseView(this.cases[this.ci],this.ci,10,this.vals.case)},
+  act(a){if(a==='next-case'){this.ans[this.ci]=this.vals.case;this.vals.case='';this.ci++;if(this.ci>=10)return 'end'}},
+  result(){if(this.ci<10)this.ans[this.ci]=this.vals.case;const cr=caseReview(this.cases,this.ans),tips=[];
+   const wrong=cr.rev.filter(r=>!r.ok).map(r=>r.q.split(':')[0]);if(wrong.length)tips.push('Tipi di caso da ripassare: '+[...new Set(wrong)].join(', ')+'.');else tips.push('Dieci su dieci. Prova a scendere sotto i 7 minuti.');
+   return{score:cr.ok*10,brk:[['Risposte corrette',cr.ok*10,100]],rev:cr.rev,tips}}}}
+};
+
+/* ---------- engine ---------- */
+let tick=null;
+const mult=()=>S.timer==='plus'?1.5:1;
+function start(mode,opt){S.session={mode,opt,queue:mode==='full'?['redrock','seawolf','sfl']:[mode],idx:0,results:[]};load()}
+function load(){const id=S.session.queue[S.session.idx];S.mod=FACT[id](S.session.opt);S.view='brief';render();scrollTo(0,0)}
+function begin(){S.view='play';S.t0=Date.now();S.allowed=S.timer==='none'?null:Math.round(META[S.mod.id].min*60*mult());S.confirm=false;S.pt={};S.lastT=S.t0;S.lastL=S.mod.steps[S.mod.ph];S.calcN=0;clearInterval(tick);tick=setInterval(onTick,500);render();scrollTo(0,0)}
+function mark(){const now=Date.now();S.pt[S.lastL]=(S.pt[S.lastL]||0)+(now-S.lastT)/1000;S.lastT=now;S.lastL=S.mod.steps[Math.min(S.mod.ph,S.mod.steps.length-1)]}
+function elapsed(){return (Date.now()-S.t0)/1000}
+function onTick(){const el=document.getElementById('clock');if(!el)return;const e=elapsed();
+  if(S.allowed==null){el.textContent=mmss(e);return}
+  const rem=S.allowed-e;el.textContent=mmss(rem);el.className='clock'+(rem<60?' crit':rem<300?' warn':'');if(rem<=0)endModule(true)}
+function endModule(timedOut){clearInterval(tick);mark();const r=S.mod.result(),m=META[S.mod.id];
+  S.session.results.push({id:S.mod.id,name:m.n,c:m.c,...r,score:Math.round(r.score),used:Math.min(elapsed(),S.allowed??1e9),allowed:S.allowed,timedOut,phases:Object.entries(S.pt).filter(x=>x[1]>=1),calcN:S.calcN});
+  S.session.idx++;document.getElementById('calc').classList.remove('open');
+  if(S.session.idx<S.session.queue.length)load();else finish()}
+function finish(){const rs=S.session.results;S.session.overall=Math.round(rs.reduce((a,r)=>a+r.score,0)/rs.length);
+  try{const h=hist();h.unshift({d:Date.now(),mode:S.session.mode,o:S.session.overall,t:S.timer,m:rs.map(r=>({id:r.id,s:r.score}))});localStorage.setItem('solve-gym',JSON.stringify(h.slice(0,60)))}catch(e){}
+  try{const now=Date.now(),errs=[];rs.forEach(r=>r.rev.filter(x=>!x.ok).forEach(x=>errs.push({d:now,g:r.name,c:r.c,q:x.q,your:x.your,corr:x.corr,why:x.why||'',k:x.k||null,ex:x.ex||''})));
+   S.session.saved=errs.length;localStorage.setItem('solve-gym-err',JSON.stringify([...errs,...errList()].slice(0,150)))}catch(e){}
+  S.view='results';render();scrollTo(0,0)}
+const errList=()=>{try{return JSON.parse(localStorage.getItem('solve-gym-err')||'[]')}catch(e){return[]}};
+const hist=()=>{try{return JSON.parse(localStorage.getItem('solve-gym')||'[]')}catch(e){return[]}};
+const band=s=>s>=85?['Molto solido','ok']:s>=70?['Buono','ok']:s>=55?['Da consolidare','mid']:['Serve ancora pratica','no'];
+
+/* ---------- views ---------- */
+function gameStats(h){const st={};h.forEach(x=>(x.m||(x.mode!=='full'?[{id:x.mode,s:x.o}]:[])).forEach(g=>{const s=st[g.id]=st[g.id]||{n:0,best:0,last:null};s.n++;s.best=Math.max(s.best,g.s);if(s.last==null)s.last=g.s}));return st}
+function home(){const h=hist(),st=gameStats(h),lab={full:'Simulazione',redrock:'Redrock',seawolf:'Sea Wolf',sfl:'Futures Lab',drill:'Drill'},cls={full:'',redrock:'m-rr',seawolf:'m-sw',sfl:'m-sf',drill:'m-dr'};
+  return `<div class="masthead"><span class="brand">Palestra Solve</span><span class="muted small">Esercizi sempre diversi, in inglese come nel test</span></div>
+  <section class="hero"><h1>Allenati sui tre giochi, con il cronometro vero.</h1>
+   <p class="lead">Ogni sessione genera dati nuovi. Alla fine ricevi un punteggio per gioco, i tempi per fase, la correzione di ogni risposta e i punti su cui lavorare.</p>
+   <div class="track" aria-label="Struttura della simulazione da 95 minuti">
+    <div class="seg m-rr" style="flex:35"><b>35′</b><span>Redrock Study</span><small>dati · analisi · report · 6 casi</small></div>
+    <div class="seg m-sw" style="flex:30"><b>30′</b><span>Sea Wolf</span><small>3 siti · 4 fasi</small></div>
+    <div class="seg m-sf" style="flex:30"><b>30′</b><span>Futures Lab</span><small>3 giornate · team</small></div></div>
+   <div class="row"><button class="btn pri big" data-a="start" data-v="full">Avvia la simulazione completa</button>
+    <div class="segctl" role="group" aria-label="Cronometro">${[['real','Tempo reale'],['plus','Tempo +50%'],['none','Senza limite']].map(([k,t])=>`<button data-a="timer" data-v="${k}" aria-pressed="${S.timer===k}">${t}</button>`).join('')}</div>
+    <div class="segctl" role="group" aria-label="Aiuti">${[[0,'Senza aiuti'],[1,'Con aiuti']].map(([k,t])=>`<button data-a="assist" data-v="${k}" aria-pressed="${!!S.assist===!!k}">${t}</button>`).join('')}</div></div></section>
+  <section style="display:flex;flex-direction:column;gap:12px"><h2>Un gioco alla volta</h2><div class="grid">
+   ${['redrock','seawolf','sfl','drill'].map(k=>{const s=st[k];return `<div class="card m ${META[k].c}"><span class="tag">${Math.round(META[k].min*mult())} min${S.timer==='none'?' (libero)':''}</span><h3>${META[k].n}</h3><p class="muted small grow">${META[k].d}</p>
+     <p class="small n">${s?`ultimo ${s.last} · migliore ${s.best} · ${s.n} prov${s.n>1?'e':'a'}`:'mai provato'}</p><div><button class="btn" data-a="start" data-v="${k}">Inizia</button></div></div>`}).join('')}</div></section>
+  ${errSection()}
+  <section class="card"><h2>Le tue sessioni</h2>${h.length?`<div class="hist">${h.slice(0,10).map(x=>`<div class="hrow ${cls[x.mode]}"><span>${new Date(x.d).toLocaleDateString('it-IT',{day:'2-digit',month:'short'})} · ${lab[x.mode]}</span><div class="bar"><i style="width:${x.o}%"></i></div><b class="n">${x.o}</b></div>`).join('')}</div><p class="muted small">Salvate solo in questo browser.</p>`
+    :'<p class="muted">Ancora nessuna. Dopo la prima sessione qui vedrai l\'andamento dei punteggi.</p>'}</section>
+  <footer>Esercizi originali costruiti sui formati descritti dai candidati e dalle guide pubbliche. Non è materiale McKinsey: grafica, contenuti e punteggio del test reale sono diversi, e il punteggio qui serve solo a misurare i tuoi progressi. Durante il test vero si lavora da soli.</footer>`}
+function errSection(){const e=errList();if(!e.length)return '';const ks=[...new Set(e.map(x=>x.k).filter(Boolean))],byG={};e.forEach(x=>{(byG[x.g]=byG[x.g]||[]).push(x)});
+  return `<section class="card"><div class="row"><h2 class="grow">Errori da rivedere</h2><span class="pill no">${e.length}</span></div>
+   <p class="muted small">Ogni risposta sbagliata o lasciata vuota finisce qui, con la soluzione spiegata. Rileggi, poi allenati su casi nuovi dello stesso tipo.</p>
+   <div class="row">${ks.length?`<button class="btn pri" data-a="errdrill">Allenati sui tipi che hai sbagliato (${ks.length})</button>`:''}<button class="btn ghost" data-a="errclear">${S.confirmClr?'Confermi? Clicca ancora':'Svuota l\'elenco'}</button></div>
+   ${Object.entries(byG).map(([g,xs])=>`<details ${S.openErr===g?'open':''} data-g="${esc(g)}"><summary>${esc(g)} · ${xs.length}</summary><div class="tw"><table><thead><tr><th>Domanda</th><th>Tua risposta</th><th>Corretta</th></tr></thead><tbody>
+    ${xs.map(x=>`<tr><td class="wrapc">${x.ex?`<div class="small" style="margin-bottom:6px">${x.ex}</div>`:''}${esc(x.q)}${x.why?`<br><span class="muted small">${esc(x.why)}</span>`:''}<br><span class="muted small">${new Date(x.d).toLocaleDateString('it-IT',{day:'2-digit',month:'short'})}</span></td><td class="wrapc">${esc(x.your)}</td><td class="wrapc"><b>${esc(x.corr)}</b></td></tr>`).join('')}</tbody></table></div></details>`).join('')}</section>`}
+function brief(){const m=META[S.mod.id],q=S.session.queue;
+  return `<div class="masthead"><span class="brand">Palestra Solve</span>${q.length>1?`<span class="muted small">Gioco ${S.session.idx+1} di ${q.length}</span>`:''}</div>
+  <div class="card m ${m.c}" style="max-width:760px"><span class="tag">Tutorial · senza cronometro</span><h1 style="font-size:2.4rem">${m.n}</h1>${S.mod.brief}
+   <p class="muted small">${S.timer==='none'?'Nessun limite di tempo: il cronometro conta in avanti.':`Tempo a disposizione: ${Math.round(m.min*mult())} minuti. Parte quando premi il pulsante.`} Aiuti ${S.assist?'attivi':'disattivati'}.</p>
+   <div class="row"><button class="btn pri big" data-a="begin">Avvia il cronometro</button><button class="btn ghost" data-a="home">Esci</button></div></div>`}
+function play(){const m=META[S.mod.id],mod=S.mod;
+  return `<div class="${m.c}" style="display:flex;flex-direction:column;gap:16px"><div class="top">
+    <span class="clock" id="clock">${S.allowed==null?mmss(elapsed()):mmss(S.allowed-elapsed())}</span>
+    <div class="grow"><b>${m.n}</b><div class="steps">${mod.steps.map((s,i)=>`<span class="${i===mod.ph?'on':i<mod.ph?'done':''}">${s}</span>`).join('')}</div></div>
+    <span class="muted small">${mod.hint}</span>
+    <button class="btn" data-a="calc-toggle">Calcolatrice</button>
+    <button class="btn" data-a="quit">${S.confirm?'Confermi? Clicca ancora':'Consegna ora'}</button></div>
+   ${mod.render()}</div>`}
+function results(){const s=S.session,[bt,bc]=band(s.overall);
+  return `<div class="masthead"><span class="brand">Palestra Solve</span><span class="muted small">Valutazione</span></div>
+  <section class="row" style="align-items:flex-end;gap:24px"><div class="score">${s.overall}<small> / 100</small></div>
+   <div style="display:flex;flex-direction:column;gap:8px;max-width:52ch"><span><span class="pill ${bc}">${bt}</span></span>
+    <p class="muted small">Soglie di questa palestra, non di McKinsey: 85+ molto solido, 70–84 buono, 55–69 da consolidare. Usale per confrontare le tue sessioni tra loro.</p></div></section>
+  ${s.results.map(r=>{const [t,c]=band(r.score);return `<section class="card m ${r.c}"><div class="row"><h2 class="grow">${r.name}</h2><span class="pill ${c}">${t}</span><b class="n" style="font-size:1.5rem">${r.score}</b></div>
+   <p class="muted small">Tempo usato ${mmss(r.used)}${r.allowed?` su ${mmss(r.allowed)}`:''}${r.timedOut?' · <span class="pill no">tempo scaduto</span>':''}${r.phases.length>1?`<br>${r.phases.map(p=>`${p[0]} ${mmss(p[1])}`).join(' · ')}`:''}${r.id==='redrock'||r.id==='drill'?`<br>Calcoli fatti con la calcolatrice integrata: ${r.calcN}`:''}</p>
+   ${r.brk.map(b=>`<div class="brk"><span>${b[0]}</span><div class="bar"><i style="width:${b[2]?b[1]/b[2]*100:0}%"></i></div><span class="n">${Math.round(b[1])} / ${b[2]}</span></div>`).join('')}
+   ${r.tips.length?`<h3>Su cosa lavorare</h3><ul class="tips">${r.tips.map(x=>`<li>${x}</li>`).join('')}</ul>`:''}
+   <details><summary>Correzione risposta per risposta (${r.rev.filter(x=>x.ok).length} / ${r.rev.length})</summary><div class="tw"><table><thead><tr><th>Domanda</th><th>Tua risposta</th><th>Corretta</th><th></th></tr></thead><tbody>
+    ${r.rev.map(x=>`<tr><td class="wrapc">${esc(x.q)}${x.why?`<br><span class="muted small">${esc(x.why)}</span>`:''}</td><td class="wrapc">${esc(x.your)}</td><td class="wrapc">${esc(x.corr)}</td><td><span class="pill ${x.ok?'ok':'no'}">${x.ok?'ok':'no'}</span></td></tr>`).join('')}</tbody></table></div></details></section>`}).join('')}
+  ${s.saved?`<p class="note">Ho salvato ${s.saved} risposte sbagliate in <b>Errori da rivedere</b>, nella home.</p>`:''}
+  <div class="row"><button class="btn pri" data-a="start" data-v="${s.mode}">Rifai con dati nuovi</button><button class="btn" data-a="home">Torna alla home</button></div>`}
+function render(){document.getElementById('app').innerHTML=({home,brief,play,results})[S.view]()}
+
+/* ---------- calculator ---------- */
+function calcEval(s){s=s.replace(/\s/g,'').replace(/,/g,'.').replace(/×/g,'*').replace(/÷/g,'/');let i=0;
+  const num=()=>{if(s[i]==='('){i++;const v=expr();if(s[i]!==')')throw 0;i++;return pct(v)}if(s[i]==='-'){i++;return -pw()}const st=i;while(/[\d.]/.test(s[i]||''))i++;if(st===i)throw 0;return pct(parseFloat(s.slice(st,i)))},
+   pct=v=>{if(s[i]==='%'){i++;return v/100}return v},pw=()=>{const v=num();if(s[i]==='^'){i++;return Math.pow(v,pw())}return v},
+   term=()=>{let v=pw();while(s[i]==='*'||s[i]==='/'){const o=s[i++],n=pw();v=o==='*'?v*n:v/n}return v},
+   expr=()=>{let v=term();while(s[i]==='+'||s[i]==='-'){const o=s[i++],n=term();v=o==='+'?v+n:v-n}return v};
+  const v=expr();if(i<s.length||!isFinite(v))throw 0;return v}
+function calcRun(){const inp=document.getElementById('calc-in'),out=document.getElementById('calc-out');try{const v=calcEval(inp.value);out.textContent=String(+v.toPrecision(12));S.calcAns=v;S.calcN=(S.calcN||0)+1}catch(e){out.textContent='Espressione non valida'}}
+
+/* ---------- events ---------- */
+function onAct(el){const a=el.dataset.a,d=el.dataset;
+  if(a==='calc-toggle'){const c=document.getElementById('calc');c.classList.toggle('open');if(c.classList.contains('open'))document.getElementById('calc-in').focus();return}
+  if(a==='key'){const inp=document.getElementById('calc-in'),k=d.v;if(k==='=')calcRun();else if(k==='C'){inp.value='';document.getElementById('calc-out').innerHTML='&nbsp;'}else if(k==='⌫')inp.value=inp.value.slice(0,-1);else if(k==='Ans')inp.value+=S.calcAns!=null?String(+S.calcAns.toPrecision(12)):'';else inp.value+=k;return}
+  if(a==='timer'){S.timer=d.v;return render()}
+  if(a==='assist'){S.assist=d.v==='1';return render()}
+  if(a==='start')return start(d.v);
+  if(a==='errdrill')return start('drill',[...new Set(errList().map(x=>x.k).filter(k=>k&&C[k]))]);
+  if(a==='errclear'){if(!S.confirmClr){S.confirmClr=true;return render()}S.confirmClr=false;try{localStorage.removeItem('solve-gym-err')}catch(e){}return render()}
+  if(a==='home'){clearInterval(tick);S.view='home';return render()}
+  if(a==='begin')return begin();
+  if(a==='quit'){if(!S.confirm){S.confirm=true;return render()}return endModule(false)}
+  if(S.view!=='play')return;
+  S.confirm=false;
+  if(a==='set'){S.mod.vals[d.k]=d.v;return render()}
+  const r=S.mod.act(a,d);if(r==='end')return endModule(false);mark();render();
+  if(a==='next-case'){const i=document.getElementById('in-case');i&&i.focus()}
+  if(a==='ph'||a==='sw-next'||a==='lab-next'||a==='treat'||a==='ob-done')scrollTo(0,0);
+}
+if(typeof document!=='undefined'){
+  document.getElementById('calc-keys').innerHTML=['7','8','9','/','4','5','6','*','1','2','3','-','0','.','%','+','(',')','^','⌫','C','Ans','='].map(k=>`<button data-a="key" data-v="${k}"${k==='='?' style="grid-column:span 2"':''}>${k}</button>`).join('');
+  document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(el&&!el.disabled)onAct(el)});
+  document.addEventListener('toggle',e=>{if(e.target.matches&&e.target.matches('details[data-g]')&&e.target.open)S.openErr=e.target.dataset.g},true);
+  document.addEventListener('input',e=>{const k=e.target.dataset&&e.target.dataset.bind;if(k&&S.mod){S.mod.vals[k]=e.target.value;if(S.view==='play'&&(k==='ct'||k==='cd'))render()}});
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&e.target.id==='calc-in'){calcRun();return}
+    if(e.key==='Enter'&&e.target.id==='in-case'){const b=document.querySelector('[data-a="next-case"]');b&&onAct(b);return}
+    if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('tr[data-a]')){e.preventDefault();onAct(e.target)}});
+  render();
+}
+if(typeof module!=='undefined')module.exports={C,genCases,genStudy,genSW,swEval,swBest,fitsThis,fitsOther,genLab,labValue,labBest,parseNum,calcEval,chk,FACT,META,S,ATT,TR,ST};
+</script>
+</body>
+</html>
